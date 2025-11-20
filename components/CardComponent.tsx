@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardType, TargetType, CardTheme } from '../types';
 
@@ -63,8 +62,6 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
       }
   };
 
-  // Removed the ghost return block so the card stays visible
-
   return (
     <div 
       onMouseDown={handleStart}
@@ -97,9 +94,9 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
       <div className="absolute top-1 right-1 md:top-2 md:right-2 z-20">{getTargetIcon()}</div>
       
       {/* Card Art Area */}
-      <div className={`h-16 md:h-24 w-full flex items-center justify-center text-4xl md:text-6xl relative overflow-hidden bg-white/50`}>
+      <div className={`h-16 md:h-24 w-full flex items-center justify-center relative overflow-hidden bg-white/50`}>
         <div className={`absolute inset-0 opacity-10 bg-current`} style={{color: card.theme === CardTheme.FIRE ? 'red' : 'black'}}></div>
-        <span className="filter drop-shadow-md transform hover:scale-110 transition-transform duration-300 relative z-10">{card.emoji || '🃏'}</span>
+        <span className="text-4xl md:text-6xl filter drop-shadow-md transform hover:scale-110 transition-transform duration-300 relative z-10">{card.emoji || '🃏'}</span>
       </div>
 
       {/* Type Ribbon */}

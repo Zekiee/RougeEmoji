@@ -14,26 +14,16 @@ export const generateEnemyProfile = async (level: number): Promise<GeneratedEnem
   return new Promise((resolve) => {
     // 简单的延迟，模拟加载感
     setTimeout(() => {
-      const isBossLevel = level % 5 === 0;
-      
-      let candidates: EnemyTemplate[];
-
-      if (isBossLevel) {
-        // 从 Boss 列表中选取
-        candidates = PRESET_ENEMIES.filter(e => e.isBoss);
-      } else {
-        // 从小兵列表中选取
-        candidates = PRESET_ENEMIES.filter(e => !e.isBoss);
-      }
-
-      // 随机选择一个
-      const enemy = candidates[Math.floor(Math.random() * candidates.length)];
+      // 修改：不再区分小怪层，全部从 Boss 列表中选取
+      const candidates = PRESET_ENEMIES.filter(e => e.isBoss);
+      // 如果没有找到Boss（理论上不应该），则回退到全部
+      const pool = candidates.length > 0 ? candidates : PRESET_ENEMIES;
+      const enemy = pool[Math.floor(Math.random() * pool.length)];
 
       resolve({
         ...enemy,
-        // 稍微动态化名字，避免完全重复 (可选)
         name: enemy.name,
-        isBoss: isBossLevel // 强制确保逻辑一致
+        isBoss: true // 强制标记为 Boss
       });
     }, 600); // 600ms 延迟
   });

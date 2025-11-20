@@ -29,25 +29,25 @@ export enum CardId {
   SHURIKEN = 'shuriken',
   BLOCK = 'block',
   UPPERCUT = 'uppercut',
-  TACTICAL_GRIP = 'tactical-grip', // New
-  SPIKED_SHIELD = 'spiked-shield', // New
+  TACTICAL_GRIP = 'tactical-grip', 
+  SPIKED_SHIELD = 'spiked-shield', 
 
   // Mage
   FIREBALL = 'fireball',
   FROST_NOVA = 'frost-nova',
   MAGIC_SHIELD = 'magic-shield',
   MEDITATE = 'meditate',
-  MOLTEN_CORE = 'molten-core', // New
+  MOLTEN_CORE = 'molten-core', 
 
   // Vampire
   CLAW = 'claw',
   DRAIN_LIFE = 'drain-life',
   DARK_PACT = 'dark-pact',
   MIST_FORM = 'mist-form',
-  CURSED_DOLL = 'cursed-doll', // New
+  CURSED_DOLL = 'cursed-doll', 
 
   // Neutral / Special
-  PHOTOSYNTHESIS = 'photosynthesis', // New
+  PHOTOSYNTHESIS = 'photosynthesis', 
 
   // Rewards
   ROUNDHOUSE_KICK = 'roundhouse-kick',
@@ -106,7 +106,7 @@ export interface HandPassive {
 
 export interface Card {
   id: string;
-  templateId?: CardId; // 更新为枚举类型
+  templateId?: CardId; 
   name: string;
   cost: number;
   type: CardType;
@@ -114,8 +114,9 @@ export interface Card {
   effects: CardEffect[];
   description: string;
   emoji?: string;
+  spriteIndex?: number; // 新增：图集索引 (0, 1, 2...)
   groupTag?: string;
-  handPassive?: HandPassive; // 新增：手牌被动效果
+  handPassive?: HandPassive; 
 }
 
 // --- 技能系统 ---
@@ -150,9 +151,9 @@ export interface Character {
   initialSkill: Skill; // 初始技能
   unlockLevel: number;
   colorTheme: string;
-  startingDeck: CardId[]; // 更新为枚举类型
-  baseDrawCount: number; // 每回合基础抽牌数/手牌上限
-  fixedStartingHand?: CardId[]; // 更新为枚举类型
+  startingDeck: CardId[]; 
+  baseDrawCount: number; 
+  fixedStartingHand?: CardId[]; 
 }
 
 // --- 实体系统 ---
@@ -185,8 +186,8 @@ export interface Player {
   statuses: Status[];
   skills: Skill[]; // 拥有的技能列表
   baseDrawCount: number;
-  fixedStartingHand: CardId[]; // 更新为枚举类型
-  emoji: string; // 玩家头像
+  fixedStartingHand: CardId[]; 
+  emoji: string; 
 }
 
 export interface FloatingText {

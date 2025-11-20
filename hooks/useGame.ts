@@ -6,10 +6,12 @@ import {
 } from '../types';
 import { generateId, CARD_REWARD_POOL, SKILL_REWARD_POOL } from '../constants';
 import { generateEnemyProfile } from '../services/geminiService';
+import { PRESET_ENEMIES } from '../data/enemies'; // 引入预设敌人用于召唤
 
 export const useGame = () => {
   const [phase, setPhase] = useState<GamePhase>('START_SCREEN');
   const [level, setLevel] = useState(1);
+  const [turnCount, setTurnCount] = useState(1); // 新增：回合计数
   
   const [player, setPlayer] = useState<Player>({
     maxHp: 100, currentHp: 100, maxEnergy: 3, currentEnergy: 3, block: 0, statuses: [], skills: [],
@@ -62,7 +64,6 @@ export const useGame = () => {
           }
 
           // Hand Passives: Damage Boost
-          // Check cards in hand for damage boosts
           const handDamageBonus = hand.reduce((acc, card) => {
               if (card.handPassive && card.handPassive.type === HandPassiveType.DAMAGE_BOOST) {
                   return acc + card.handPassive.value;
@@ -75,6 +76,13 @@ export const useGame = () => {
               dmg *= 2;
           }
           if (player.statuses.find(s => s.type === StatusType.WEAK)) {
+              dmg = Math.floor(dmg * 0.75);
+          }
+      } else {
+          // Enemy Source Mods
+          const strength = source.statuses.find(s => s.type === StatusType.STRENGTH)?.value || 0;
+          dmg += strength;
+          if (source.statuses.find(s => s.type === StatusType.WEAK)) {
               dmg = Math.floor(dmg * 0.75);
           }
       }
@@ -102,7 +110,6 @@ export const useGame = () => {
 
     // VFX Trigger
     if (targets.length > 0 && sourceCoords && (effect.type === EffectType.DAMAGE || effect.type === EffectType.APPLY_STATUS)) {
-        // 简化：对第一个目标发射投射物
         const targetEl = document.querySelector(`[data-enemy-id="${targets[0].id}"]`);
         if (targetEl) {
             const rect = targetEl.getBoundingClientRect();
@@ -187,23 +194,44 @@ export const useGame = () => {
       setHand([]);
       setDiscardPile([]);
       setDrawPile([]);
+      setTurnCount(1); // 重置回合数
 
       const profile = await generateEnemyProfile(lvl);
-      const hp = profile.isBoss ? 100 + (lvl * 15) : 30 + (lvl * 6);
+      
+      // 难度曲线：指数增长 (1.15 ^ lvl)
+      const scale = Math.pow(1.15, lvl - 1);
+      const bossHp = Math.floor(100 * scale);
+      
       const mainEnemy: Enemy = {
           id: generateId(),
           name: profile.name, description: profile.description, emoji: profile.emoji,
-          maxHp: hp, currentHp: hp, block: 0, statuses: [], 
-          intent: IntentType.ATTACK, intentValue: 6 + lvl, isBoss: profile.isBoss
+          maxHp: bossHp, currentHp: bossHp, block: 0, statuses: [], 
+          intent: IntentType.ATTACK, intentValue: 6 + Math.floor(lvl * 1.5), isBoss: true
       };
       
-      setEnemies([mainEnemy]);
+      const initialEnemies = [mainEnemy];
+
+      // 初始召唤 1-2 个小兵，作为 Boss 的随从
+      const numMinions = Math.floor(Math.random() * 2) + 1; 
+      const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
+      
+      for (let i = 0; i < numMinions; i++) {
+          const t = minionTemplates[Math.floor(Math.random() * minionTemplates.length)];
+          const minionHp = Math.floor(bossHp * 0.3); // 小兵血量是 Boss 的 30%
+          initialEnemies.push({
+              id: generateId(),
+              name: t.name, description: t.description, emoji: t.emoji,
+              maxHp: minionHp, currentHp: minionHp, block: 0, statuses: [],
+              intent: IntentType.ATTACK, intentValue: Math.floor(lvl * 0.8) + 3, isBoss: false
+          });
+      }
+
+      setEnemies(initialEnemies);
       
       // Deck Init Logic
       const initialDrawPile = [...currentDeck].sort(() => Math.random() - 0.5);
       let initialHand: Card[] = [];
 
-      // 1. 处理固定起手牌
       if (player.fixedStartingHand.length > 0) {
           for (const fixedId of player.fixedStartingHand) {
               const idx = initialDrawPile.findIndex(c => c.templateId === fixedId);
@@ -214,7 +242,6 @@ export const useGame = () => {
           }
       }
 
-      // 2. 补齐手牌到 baseDrawCount
       const needed = player.baseDrawCount - initialHand.length;
       if (needed > 0) {
           for (let i = 0; i < needed; i++) {
@@ -230,14 +257,13 @@ export const useGame = () => {
   };
 
   const drawCards = (count: number) => {
-      // 修正后的抽牌逻辑：先更新状态，避免闭包陷阱
       let currentDraw = [...drawPile];
       let currentDiscard = [...discardPile];
       let currentHand = [...hand];
       
       for(let i=0; i<count; i++) {
           if (currentDraw.length === 0) {
-              if (currentDiscard.length === 0) break; // 无牌可抽
+              if (currentDiscard.length === 0) break;
               currentDraw = currentDiscard.sort(() => Math.random() - 0.5);
               currentDiscard = [];
           }
@@ -250,7 +276,6 @@ export const useGame = () => {
       setHand(currentHand);
   };
 
-  // Refactored to draw up to a limit instead of a fixed number
   const drawToLimit = (limit: number) => {
       const currentCount = hand.length;
       if (currentCount >= limit) return;
@@ -259,7 +284,6 @@ export const useGame = () => {
 
   useEffect(() => {
       if (phase === 'PLAYER_TURN') {
-          // Turn Start
           setPlayer(p => ({
               ...p, 
               block: 0, 
@@ -268,59 +292,43 @@ export const useGame = () => {
               skills: p.skills.map(s => s.type === SkillType.ACTIVE ? {...s, currentCooldown: Math.max(0, (s.currentCooldown || 0) - 1)} : s)
           }));
           
-          // drawCards(player.baseDrawCount); // OLD
-          drawToLimit(player.baseDrawCount); // NEW: Draw until full
+          drawToLimit(player.baseDrawCount);
       }
   }, [phase]); 
 
   const playCard = (card: Card, targetId?: string, mouseX?: number, mouseY?: number) => {
       if (player.currentEnergy < card.cost) return;
-      
-      // 消耗能量
       setPlayer(p => ({ ...p, currentEnergy: p.currentEnergy - card.cost }));
-      
-      // 移出手牌 -> 弃牌堆
       setHand(prev => prev.filter(c => c.id !== card.id));
       setDiscardPile(prev => [...prev, card]);
 
-      // 检查双倍伤害Buff
       let consumeDouble = false;
       if (card.type === CardType.ATTACK && player.statuses.find(s => s.type === StatusType.DOUBLE_NEXT_ATTACK)) {
           consumeDouble = true;
       }
 
-      // 结算效果
       card.effects.forEach(eff => resolveEffect(eff, targetId, {x: mouseX || 0, y: mouseY || 0}, card.theme));
 
-      // 移除一次性Buff
       if (consumeDouble) {
            setPlayer(p => ({...p, statuses: p.statuses.filter(s => s.type !== StatusType.DOUBLE_NEXT_ATTACK)}));
            addFloatingText("双倍消耗!", 20, 70, 'text-yellow-400');
       }
   };
 
-  // 新增：批量出牌（用于连击机制）
   const playCardBatch = (cards: Card[], targetId?: string, startX?: number, startY?: number) => {
-      // 计算总消耗
       const totalCost = cards.reduce((sum, c) => sum + c.cost, 0);
       if (player.currentEnergy < totalCost) {
           addFloatingText("能量不足!", 50, 50, 'text-red-500');
           return;
       }
-
-      // 1. 立即扣除能量
       setPlayer(p => ({ ...p, currentEnergy: p.currentEnergy - totalCost }));
-
-      // 2. 立即将这些牌全部移入手牌 -> 弃牌堆（防止视觉上残留）
       const cardIds = new Set(cards.map(c => c.id));
       setHand(prev => prev.filter(c => !cardIds.has(c.id)));
       setDiscardPile(prev => [...prev, ...cards]);
-
-      // 3. 依次触发效果（带延迟，增加打击感）
       cards.forEach((card, index) => {
           setTimeout(() => {
               card.effects.forEach(eff => resolveEffect(eff, targetId, {x: startX || 0, y: startY || 0}, card.theme));
-          }, index * 200); // 每张牌间隔200ms
+          }, index * 200);
       });
   };
 
@@ -341,9 +349,6 @@ export const useGame = () => {
   };
 
   const endTurn = () => {
-      // New Logic: Hand Retention & Hand Passives
-      
-      // 1. Trigger Hand Passives
       hand.forEach(card => {
           if (card.handPassive) {
               const { type, value } = card.handPassive;
@@ -356,25 +361,15 @@ export const useGame = () => {
               }
           }
       });
-
-      // 2. Do NOT clear hand
-      // setDiscardPile(prev => [...prev, ...hand]); 
-      // setHand([]);
-
       setPhase('ENEMY_TURN');
   };
 
-  // Auto-End Turn Logic
   useEffect(() => {
       if (phase === 'PLAYER_TURN') {
-          // Check if any enemies are alive (to avoid triggering during win condition delay)
           const enemiesAlive = enemies.some(e => e.currentHp > 0);
           if (!enemiesAlive) return;
 
-          // Check if any card is playable
           const hasPlayableCard = hand.some(c => c.cost <= player.currentEnergy);
-
-          // Check if any skill is usable
           const hasUsableSkill = player.skills.some(s => 
               s.type === SkillType.ACTIVE && 
               (s.cost || 0) <= player.currentEnergy && 
@@ -385,7 +380,7 @@ export const useGame = () => {
               const timer = setTimeout(() => {
                   addFloatingText("无牌可出", 50, 20, 'text-gray-400 text-2xl font-bold');
                   endTurn();
-              }, 1500); // 1.5s delay
+              }, 1500);
               return () => clearTimeout(timer);
           }
       }
@@ -395,6 +390,13 @@ export const useGame = () => {
   useEffect(() => {
     if (phase === 'ENEMY_TURN') {
         const runEnemyAI = async () => {
+            // 狂暴检测：回合数 > 10
+            if (turnCount > 10) {
+                addFloatingText("🔥 狂暴! (+1力量)", 50, 20, 'text-red-600 font-black text-3xl animate-pulse');
+                setEnemies(prev => prev.map(e => ({...e, statuses: applyStatus(e.statuses, StatusType.STRENGTH, 1)})));
+                await new Promise(r => setTimeout(r, 800));
+            }
+
             for (const enemy of enemies) {
                 if (enemy.currentHp <= 0) continue;
                 await new Promise(r => setTimeout(r, 600));
@@ -417,14 +419,77 @@ export const useGame = () => {
                     }
                 } else if (enemy.intent === IntentType.BUFF) {
                     setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, block: e.block + 10} : e));
+                } else if (enemy.intent === IntentType.SUMMON) {
+                    // 召唤逻辑
+                    // 限制场上最多4个敌人
+                    if (enemies.filter(e => e.currentHp > 0).length < 4) {
+                         const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
+                         const t = minionTemplates[Math.floor(Math.random() * minionTemplates.length)];
+                         const bossHp = enemies.find(e => e.isBoss)?.maxHp || 100;
+                         const minionHp = Math.floor(bossHp * 0.3);
+                         
+                         const newMinion: Enemy = {
+                            id: generateId(),
+                            name: t.name, description: t.description, emoji: t.emoji,
+                            maxHp: minionHp, currentHp: minionHp, block: 0, statuses: [],
+                            intent: IntentType.ATTACK, intentValue: Math.floor(level * 0.8) + 3, isBoss: false
+                        };
+                        setEnemies(prev => [...prev, newMinion]);
+                        triggerVFX('BUFF', 80, 50, undefined, undefined, CardTheme.DARK);
+                        addFloatingText("援军!", 80, 30, 'text-purple-500');
+                    } else {
+                        addFloatingText("召唤失败", 80, 30, 'text-gray-400');
+                    }
+                } else if (enemy.intent === IntentType.SPECIAL) {
+                    // 必杀重击
+                    const dmg = calculateDamage(Math.floor(enemy.intentValue * 1.5), enemy, 'PLAYER');
+                     let take = dmg;
+                     if (player.block >= take) {
+                        setPlayer(p => ({...p, block: p.block - take}));
+                        take = 0;
+                    } else {
+                        take -= player.block;
+                        setPlayer(p => ({...p, block: 0}));
+                    }
+                    if (take > 0) {
+                        setPlayer(p => ({...p, currentHp: p.currentHp - take}));
+                        triggerShake('PLAYER');
+                        addFloatingText(`💥 ${take}`, 20, 50, 'text-red-800 font-black text-5xl');
+                    }
                 }
 
                 // Prepare Next Intent
-                const nextType = Math.random() > 0.7 ? IntentType.BUFF : IntentType.ATTACK;
-                const nextVal = nextType === IntentType.ATTACK ? 5 + Math.floor(level * 1.2) : 0;
+                let nextType = IntentType.ATTACK;
+                let nextVal = 0;
+
+                if (enemy.isBoss) {
+                    const rand = Math.random();
+                    const activeMinions = enemies.filter(e => e.currentHp > 0 && !e.isBoss).length;
+                    
+                    if (activeMinions < 2 && rand < 0.3) {
+                        nextType = IntentType.SUMMON;
+                    } else if (rand < 0.5) {
+                        nextType = IntentType.ATTACK;
+                        nextVal = 6 + Math.floor(level * 1.5);
+                    } else if (rand < 0.7) {
+                        nextType = IntentType.BUFF;
+                    } else if (rand < 0.85) {
+                        nextType = IntentType.SPECIAL; // 重击
+                        nextVal = 10 + Math.floor(level * 2);
+                    } else {
+                        nextType = IntentType.ATTACK;
+                        nextVal = 6 + Math.floor(level * 1.5);
+                    }
+                } else {
+                    // 小兵 AI
+                     nextType = Math.random() > 0.6 ? IntentType.BUFF : IntentType.ATTACK;
+                     nextVal = nextType === IntentType.ATTACK ? 3 + Math.floor(level * 0.8) : 0;
+                }
                 
                 setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, intent: nextType, intentValue: nextVal} : e));
             }
+            
+            setTurnCount(prev => prev + 1);
             setPhase('PLAYER_TURN');
         };
         runEnemyAI();
@@ -435,7 +500,6 @@ export const useGame = () => {
   useEffect(() => {
       if (enemies.length > 0 && enemies.every(e => e.currentHp <= 0) && phase !== 'REWARD' && phase !== 'LOADING') {
           setTimeout(() => {
-              // Gen rewards
               const cardRewards = Array(3).fill(null).map(() => ({...CARD_REWARD_POOL[Math.floor(Math.random()*CARD_REWARD_POOL.length)], id: generateId()}));
               const skillReward = enemies.some(e => e.isBoss) ? {...SKILL_REWARD_POOL[0], id: generateId()} : undefined;
               
@@ -451,6 +515,7 @@ export const useGame = () => {
 
   return {
       phase, setPhase, level, setLevel,
+      turnCount, // Exposed
       player, setPlayer,
       deck, setDeck,
       hand, drawPile, discardPile,

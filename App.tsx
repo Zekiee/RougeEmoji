@@ -347,7 +347,7 @@ const App: React.FC = () => {
               </div>
           </div>
       )}
-      <button onClick={() => { game.setLevel(l => l + 1); game.setPlayer(p => ({...p, currentHp: Math.min(p.maxHp, p.currentHp + 15)})); game.startLevel(game.level + 1, game.deck); }} className="text-slate-400 hover:text-white font-bold underline decoration-2 underline-offset-4 transition-colors text-sm md:text-base">跳过奖励 (恢复15点生命)</button>
+      <button onClick={() => { game.setLevel(l => l + 1); game.setPlayer(p => ({...p, currentHp: Math.min(p.maxHp, p.currentHp + 10)})); game.startLevel(game.level + 1, game.deck); }} className="text-slate-400 hover:text-white font-bold underline decoration-2 underline-offset-4 transition-colors text-sm md:text-base">跳过奖励 (恢复10点生命)</button>
     </div>
   );
 
@@ -370,11 +370,17 @@ const App: React.FC = () => {
 
       {/* --- Top Floating HUD --- */}
       <div className="absolute top-2 md:top-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-md px-4 py-2 md:px-8 md:py-3 rounded-full shadow-lg border-b-4 border-slate-200 flex items-center gap-4 md:gap-12 pointer-events-auto transition-all origin-top scale-90 md:scale-100">
+          <div className="bg-white/90 backdrop-blur-md px-4 py-2 md:px-8 md:py-3 rounded-full shadow-lg border-b-4 border-slate-200 flex items-center gap-4 md:gap-8 pointer-events-auto transition-all origin-top scale-90 md:scale-100">
               {/* Level */}
               <div className="flex flex-col items-center">
                   <span className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Level</span>
                   <span className="text-xl md:text-2xl font-black text-slate-700 leading-none">{game.level}</span>
+              </div>
+
+              {/* Turn Count (New) */}
+              <div className="flex flex-col items-center">
+                  <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest ${game.turnCount >= 9 ? 'text-red-500' : 'text-slate-400'}`}>Turn</span>
+                  <span className={`text-xl md:text-2xl font-black leading-none ${game.turnCount >= 9 ? 'text-red-600 animate-pulse' : 'text-slate-700'}`}>{game.turnCount}</span>
               </div>
               
               {/* Player Health */}

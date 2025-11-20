@@ -1,4 +1,3 @@
-
 import { Card, CardType, EffectType, TargetType, StatusType, CardTheme, CardId, HandPassiveType } from '../types';
 
 // 使用 Record<CardId, ...> 确保覆盖所有枚举值
@@ -43,7 +42,6 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     description: '造成 12 点伤害。',
     emoji: '☄️'
   },
-  // New: 战术握把 (保留加攻)
   [CardId.TACTICAL_GRIP]: {
     name: '战术握把',
     cost: 1,
@@ -58,7 +56,6 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
         description: '✋ 手牌被动：攻击伤害 +1'
     }
   },
-  // New: 尖刺盾 (保留加甲)
   [CardId.SPIKED_SHIELD]: {
     name: '尖刺盾',
     cost: 2,
@@ -117,7 +114,6 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     description: '获得 1 点能量。',
     emoji: '🧘'
   },
-  // New: 熔岩核心 (保留加攻，打出高费)
   [CardId.MOLTEN_CORE]: {
     name: '熔岩核心',
     cost: 3,
@@ -177,7 +173,6 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     description: '获得 10 点格挡。',
     emoji: '🌫️'
   },
-  // New: 诅咒玩偶
   [CardId.CURSED_DOLL]: {
     name: '诅咒玩偶',
     cost: 2,
