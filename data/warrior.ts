@@ -22,13 +22,16 @@ export const WARRIOR_DATA: Character = {
     effects: [{ type: EffectType.DAMAGE, value: 12, target: TargetType.SINGLE_ENEMY }]
   },
   startingDeck: [
-      // 攻击牌 (18)
-      CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, 
-      CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE,
-      CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN,
-      // 技能/强力牌 (12)
-      CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK,
+      // 攻击牌 (14)
+      CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, 
+      CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE, CardId.STRIKE,
+      CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN, CardId.SHURIKEN,
+      // 手牌被动牌 (6)
+      CardId.TACTICAL_GRIP, CardId.TACTICAL_GRIP, CardId.TACTICAL_GRIP,
+      CardId.SPIKED_SHIELD, CardId.SPIKED_SHIELD, CardId.SPIKED_SHIELD,
+      // 技能/强力牌 (10)
+      CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK, CardId.BLOCK,
       CardId.UPPERCUT, CardId.UPPERCUT, CardId.UPPERCUT, CardId.UPPERCUT
   ],
-  baseDrawCount: 5
+  baseDrawCount: 8 // Changed to 8
 };

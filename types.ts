@@ -29,18 +29,25 @@ export enum CardId {
   SHURIKEN = 'shuriken',
   BLOCK = 'block',
   UPPERCUT = 'uppercut',
+  TACTICAL_GRIP = 'tactical-grip', // New
+  SPIKED_SHIELD = 'spiked-shield', // New
 
   // Mage
   FIREBALL = 'fireball',
   FROST_NOVA = 'frost-nova',
   MAGIC_SHIELD = 'magic-shield',
   MEDITATE = 'meditate',
+  MOLTEN_CORE = 'molten-core', // New
 
   // Vampire
   CLAW = 'claw',
   DRAIN_LIFE = 'drain-life',
   DARK_PACT = 'dark-pact',
   MIST_FORM = 'mist-form',
+  CURSED_DOLL = 'cursed-doll', // New
+
+  // Neutral / Special
+  PHOTOSYNTHESIS = 'photosynthesis', // New
 
   // Rewards
   ROUNDHOUSE_KICK = 'roundhouse-kick',
@@ -84,6 +91,19 @@ export interface CardEffect {
   statusType?: StatusType;
 }
 
+// --- 手牌被动系统 ---
+export enum HandPassiveType {
+    DAMAGE_BOOST = 'DAMAGE_BOOST', // 手里有此牌，攻击伤害增加
+    HEAL_ON_TURN_END = 'HEAL_ON_TURN_END', // 回合结束回血
+    BLOCK_ON_TURN_END = 'BLOCK_ON_TURN_END', // 回合结束获得格挡
+}
+
+export interface HandPassive {
+    type: HandPassiveType;
+    value: number;
+    description: string;
+}
+
 export interface Card {
   id: string;
   templateId?: CardId; // 更新为枚举类型
@@ -95,6 +115,7 @@ export interface Card {
   description: string;
   emoji?: string;
   groupTag?: string;
+  handPassive?: HandPassive; // 新增：手牌被动效果
 }
 
 // --- 技能系统 ---

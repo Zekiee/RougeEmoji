@@ -465,7 +465,10 @@ const App: React.FC = () => {
       {/* --- Hand & UI Bottom --- */}
       <div className="absolute bottom-0 left-0 right-0 h-48 md:h-64 z-20 pointer-events-none">
           {/* Draw Pile */}
-          <div className="absolute left-2 md:left-8 bottom-2 md:bottom-8 pointer-events-auto group hidden md:block">
+          <div 
+            className="absolute left-2 md:left-8 bottom-2 md:bottom-8 pointer-events-auto group hidden md:block cursor-pointer active:scale-95 transition-transform"
+            onClick={() => {/* Visual feedback or view deck feature later */}}
+          >
               <div className="w-16 h-20 md:w-20 md:h-24 bg-gradient-to-br from-amber-800 to-amber-900 rounded-lg border-2 border-amber-700 shadow-xl flex items-center justify-center relative transform group-hover:-translate-y-1 transition-transform">
                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-50 rounded-lg"></div>
                  <div className="z-10 text-amber-100 font-black text-xl md:text-2xl drop-shadow-md">{game.drawPile.length}</div>
@@ -506,12 +509,16 @@ const App: React.FC = () => {
                       const center = (total - 1) / 2;
                       const offset = index - center;
                       // Adjust fan curve
-                      const rotate = offset * 5; 
-                      const translateY = Math.abs(offset) * 6; // Less drop on mobile
+                      const rotate = offset * 4; // Reduced rotation for 8 cards
+                      const translateY = Math.abs(offset) * 4; // Less drop
                       const isBeingDragged = dragState.isDragging && dragState.itemId === card.id;
                       const isGroupMatch = dragState.isDragging && dragState.groupTag && card.groupTag === dragState.groupTag && card.id !== dragState.itemId;
-                      // Mobile: tighter spacing (60px vs 90px)
-                      const xSpacing = window.innerWidth < 768 ? 60 : 90;
+                      
+                      // Dynamic spacing based on card count to fit screen
+                      // Max width container / count, clamped
+                      const screenWidth = window.innerWidth;
+                      const maxSpacing = screenWidth < 768 ? 45 : 70; // Tighter spacing
+                      const xSpacing = Math.min(maxSpacing, (screenWidth * 0.8) / total);
 
                       return (
                         <div key={card.id} className="origin-bottom transition-all duration-300 absolute bottom-0"
@@ -519,12 +526,12 @@ const App: React.FC = () => {
                                 left: `${(index - center) * xSpacing}px`, // Responsive overlap
                                 zIndex: isBeingDragged ? 100 : index,
                                 transform: isBeingDragged 
-                                    ? `translate(${(index - center) * xSpacing}px, -100px) scale(1.1) rotate(0deg)` // Follow drag logical pos or hide
+                                    ? `translate(${(index - center) * xSpacing}px, -180px) scale(1.25) rotate(0deg)` // Pop up high and straight
                                     : `translate(0px, ${translateY}px) rotate(${rotate}deg)`,
-                                opacity: isBeingDragged ? 0 : 1 
+                                opacity: 1 
                             }}
                         >
-                            <div className={isBeingDragged ? 'hidden' : 'block'}>
+                            <div className={isBeingDragged ? 'block' : 'block'}>
                                 <CardComponent 
                                     card={card} 
                                     index={index}

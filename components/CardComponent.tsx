@@ -59,16 +59,11 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
   // 统一处理触摸和鼠标开始
   const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
       if (playable && !disabled && onMouseDown) {
-          // 触摸事件中，e.preventDefault 可以防止后续触发鼠标模拟事件，并禁止滚动
-          // 但在这里我们不阻止默认，交给 App.tsx 的全局处理器去阻止滚动
           onMouseDown(e, card);
       }
   };
 
-  // Ghost visual for dragging placeholder
-  if (isDragging) {
-    return <div className="w-24 h-36 md:w-32 md:h-48 rounded-xl border-2 border-dashed border-black/20 bg-black/5 opacity-30"></div>;
-  }
+  // Removed the ghost return block so the card stays visible
 
   return (
     <div 
@@ -85,7 +80,8 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
         ${getThemeStyle(card.theme)}
         ${selected ? 'ring-4 ring-yellow-400 -translate-y-8 scale-110 z-50' : ''}
         ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-4 scale-105' : ''}
-        ${playable && !disabled && !selected && !isGroupHighlighted ? 'hover:-translate-y-8 md:hover:-translate-y-12 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
+        ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50' : ''}
+        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-8 md:hover:-translate-y-12 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
         ${disabled && !selected ? 'opacity-80 grayscale cursor-not-allowed brightness-90' : ''}
       `}
     >
@@ -117,10 +113,17 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
       </div>
 
       {/* Description */}
-      <div className="flex-1 px-1 md:px-2 pb-1 md:pb-2 text-center flex items-start justify-center overflow-hidden">
+      <div className="flex-1 px-1 md:px-2 pb-1 md:pb-2 text-center flex items-start justify-center overflow-hidden flex-col">
         <p className="text-[8px] md:text-[9px] text-slate-600 font-bold leading-tight scale-90 origin-top">{card.description}</p>
       </div>
       
+      {/* Hand Passive Indicator (New) */}
+      {card.handPassive && (
+          <div className="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-[8px] font-bold text-center py-0.5 border-t border-yellow-200 z-10">
+              ✋ 保留有益
+          </div>
+      )}
+
       <style>{`
         @keyframes draw-card-anim {
             0% { transform: translate(-50px, 100px) rotate(-20deg); opacity: 0; }

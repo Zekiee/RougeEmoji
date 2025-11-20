@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Player, Enemy, Card, CardType, GamePhase, IntentType, EffectType, 
-  TargetType, StatusType, FloatingText, VFXEvent, Status, SkillType, CardTheme 
+  TargetType, StatusType, FloatingText, VFXEvent, Status, SkillType, CardTheme, HandPassiveType 
 } from '../types';
 import { generateId, CARD_REWARD_POOL, SKILL_REWARD_POOL } from '../constants';
 import { generateEnemyProfile } from '../services/geminiService';
@@ -13,7 +13,7 @@ export const useGame = () => {
   
   const [player, setPlayer] = useState<Player>({
     maxHp: 100, currentHp: 100, maxEnergy: 3, currentEnergy: 3, block: 0, statuses: [], skills: [],
-    baseDrawCount: 5, fixedStartingHand: [], emoji: '🤨'
+    baseDrawCount: 8, fixedStartingHand: [], emoji: '🤨'
   });
   
   const [deck, setDeck] = useState<Card[]>([]);
@@ -60,6 +60,16 @@ export const useGame = () => {
           if (player.skills.some(s => s.type === SkillType.PASSIVE && s.passiveEffect === 'DAMAGE_BOOST_1')) {
               dmg += 1;
           }
+
+          // Hand Passives: Damage Boost
+          // Check cards in hand for damage boosts
+          const handDamageBonus = hand.reduce((acc, card) => {
+              if (card.handPassive && card.handPassive.type === HandPassiveType.DAMAGE_BOOST) {
+                  return acc + card.handPassive.value;
+              }
+              return acc;
+          }, 0);
+          dmg += handDamageBonus;
 
           if (player.statuses.find(s => s.type === StatusType.DOUBLE_NEXT_ATTACK)) {
               dmg *= 2;
@@ -240,6 +250,13 @@ export const useGame = () => {
       setHand(currentHand);
   };
 
+  // Refactored to draw up to a limit instead of a fixed number
+  const drawToLimit = (limit: number) => {
+      const currentCount = hand.length;
+      if (currentCount >= limit) return;
+      drawCards(limit - currentCount);
+  };
+
   useEffect(() => {
       if (phase === 'PLAYER_TURN') {
           // Turn Start
@@ -251,13 +268,8 @@ export const useGame = () => {
               skills: p.skills.map(s => s.type === SkillType.ACTIVE ? {...s, currentCooldown: Math.max(0, (s.currentCooldown || 0) - 1)} : s)
           }));
           
-          // 如果是刚进入关卡（从LOADING变来），手牌已经由 startLevel 处理好了
-          // 如果是战斗中的新回合（从ENEMY_TURN变来），则需要抽牌
-          // 但这里 phase 依赖会导致刚进关卡也触发。
-          // 简单判断：如果手牌为空（通常回合开始前会清空手牌到弃牌堆），则抽牌
-          if (hand.length === 0) {
-              drawCards(player.baseDrawCount);
-          }
+          // drawCards(player.baseDrawCount); // OLD
+          drawToLimit(player.baseDrawCount); // NEW: Draw until full
       }
   }, [phase]); 
 
@@ -329,8 +341,26 @@ export const useGame = () => {
   };
 
   const endTurn = () => {
-      setDiscardPile(prev => [...prev, ...hand]);
-      setHand([]);
+      // New Logic: Hand Retention & Hand Passives
+      
+      // 1. Trigger Hand Passives
+      hand.forEach(card => {
+          if (card.handPassive) {
+              const { type, value } = card.handPassive;
+              if (type === HandPassiveType.HEAL_ON_TURN_END) {
+                  setPlayer(p => ({ ...p, currentHp: Math.min(p.maxHp, p.currentHp + value) }));
+                  addFloatingText(`+${value} ❤️`, 20, 60, 'text-green-500');
+              } else if (type === HandPassiveType.BLOCK_ON_TURN_END) {
+                  setPlayer(p => ({ ...p, block: p.block + value }));
+                  addFloatingText(`+${value} 🛡️`, 20, 50, 'text-blue-400');
+              }
+          }
+      });
+
+      // 2. Do NOT clear hand
+      // setDiscardPile(prev => [...prev, ...hand]); 
+      // setHand([]);
+
       setPhase('ENEMY_TURN');
   };
 

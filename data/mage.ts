@@ -19,14 +19,16 @@ export const MAGE_DATA: Character = {
     passiveEffect: 'DAMAGE_BOOST_1'
   },
   startingDeck: [
-      // 攻击牌 (16)
+      // 攻击牌 (14)
       CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL, 
       CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL, CardId.FIREBALL,
-      CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA,
-      // 技能牌 (14)
+      CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA, CardId.FROST_NOVA,
+      // 手牌被动 (4)
+      CardId.MOLTEN_CORE, CardId.MOLTEN_CORE, CardId.PHOTOSYNTHESIS, CardId.PHOTOSYNTHESIS,
+      // 技能牌 (12)
       CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD, 
       CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD, CardId.MAGIC_SHIELD,
-      CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE
+      CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE, CardId.MEDITATE
   ],
-  baseDrawCount: 4
+  baseDrawCount: 8 // Changed to 8
 };

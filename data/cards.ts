@@ -1,5 +1,5 @@
 
-import { Card, CardType, EffectType, TargetType, StatusType, CardTheme, CardId } from '../types';
+import { Card, CardType, EffectType, TargetType, StatusType, CardTheme, CardId, HandPassiveType } from '../types';
 
 // 使用 Record<CardId, ...> 确保覆盖所有枚举值
 export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
@@ -42,6 +42,36 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     ],
     description: '造成 12 点伤害。',
     emoji: '☄️'
+  },
+  // New: 战术握把 (保留加攻)
+  [CardId.TACTICAL_GRIP]: {
+    name: '战术握把',
+    cost: 1,
+    type: CardType.SKILL,
+    theme: CardTheme.PHYSICAL,
+    effects: [{ type: EffectType.DAMAGE, value: 3, target: TargetType.SINGLE_ENEMY }],
+    description: '造成3点伤害。保留：其它攻击伤害+1。',
+    emoji: '✊',
+    handPassive: {
+        type: HandPassiveType.DAMAGE_BOOST,
+        value: 1,
+        description: '✋ 手牌被动：攻击伤害 +1'
+    }
+  },
+  // New: 尖刺盾 (保留加甲)
+  [CardId.SPIKED_SHIELD]: {
+    name: '尖刺盾',
+    cost: 2,
+    type: CardType.ATTACK,
+    theme: CardTheme.PHYSICAL,
+    effects: [{ type: EffectType.DAMAGE, value: 5, target: TargetType.SINGLE_ENEMY }, { type: EffectType.BLOCK, value: 5, target: TargetType.SELF }],
+    description: '5攻5防。保留：回合结束获得3格挡。',
+    emoji: '🛡️',
+    handPassive: {
+        type: HandPassiveType.BLOCK_ON_TURN_END,
+        value: 3,
+        description: '✋ 手牌被动：回合结束 +3 格挡'
+    }
   },
 
   // --- 法师卡牌 ---
@@ -86,6 +116,21 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     effects: [{ type: EffectType.ADD_ENERGY, value: 1, target: TargetType.SELF }],
     description: '获得 1 点能量。',
     emoji: '🧘'
+  },
+  // New: 熔岩核心 (保留加攻，打出高费)
+  [CardId.MOLTEN_CORE]: {
+    name: '熔岩核心',
+    cost: 3,
+    type: CardType.POWER,
+    theme: CardTheme.FIRE,
+    effects: [{ type: EffectType.APPLY_STATUS, value: 3, target: TargetType.ALL_ENEMIES, statusType: StatusType.BURN }],
+    description: '全体3层燃烧。保留：攻击伤害+2。',
+    emoji: '🌋',
+    handPassive: {
+        type: HandPassiveType.DAMAGE_BOOST,
+        value: 2,
+        description: '✋ 手牌被动：攻击伤害 +2'
+    }
   },
 
   // --- 吸血鬼卡牌 ---
@@ -132,6 +177,38 @@ export const CARD_DATABASE: Record<CardId, Omit<Card, 'id'>> = {
     description: '获得 10 点格挡。',
     emoji: '🌫️'
   },
+  // New: 诅咒玩偶
+  [CardId.CURSED_DOLL]: {
+    name: '诅咒玩偶',
+    cost: 2,
+    type: CardType.SKILL,
+    theme: CardTheme.DARK,
+    effects: [{ type: EffectType.DAMAGE, value: 10, target: TargetType.SINGLE_ENEMY }],
+    description: '造成10点伤害。保留：回合结束回2血。',
+    emoji: '🧸',
+    handPassive: {
+        type: HandPassiveType.HEAL_ON_TURN_END,
+        value: 2,
+        description: '✋ 手牌被动：回合结束 +2 血'
+    }
+  },
+
+  // --- 中立/特殊 ---
+  [CardId.PHOTOSYNTHESIS]: {
+      name: '光合作用',
+      cost: 0,
+      type: CardType.SKILL,
+      theme: CardTheme.HOLY,
+      effects: [{ type: EffectType.ADD_ENERGY, value: 2, target: TargetType.SELF }],
+      description: '获得2能量。保留：回合结束回2血。',
+      emoji: '🌱',
+      handPassive: {
+          type: HandPassiveType.HEAL_ON_TURN_END,
+          value: 2,
+          description: '✋ 手牌被动：回合结束 +2 血'
+      }
+  },
+
 
   // --- 奖励卡牌 ---
   [CardId.ROUNDHOUSE_KICK]: {

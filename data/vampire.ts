@@ -25,15 +25,17 @@ export const VAMPIRE_DATA: Character = {
     ]
   },
   startingDeck: [
-      // 攻击牌 (18)
+      // 攻击牌 (16)
       CardId.CLAW, CardId.CLAW, CardId.CLAW, CardId.CLAW, CardId.CLAW, 
       CardId.CLAW, CardId.CLAW, CardId.CLAW, CardId.CLAW, CardId.CLAW,
       CardId.DRAIN_LIFE, CardId.DRAIN_LIFE, CardId.DRAIN_LIFE, CardId.DRAIN_LIFE, 
-      CardId.DRAIN_LIFE, CardId.DRAIN_LIFE, CardId.DRAIN_LIFE, CardId.DRAIN_LIFE,
-      // 技能牌 (12)
-      CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT,
-      CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM
+      CardId.DRAIN_LIFE, CardId.DRAIN_LIFE,
+      // 手牌被动 (4)
+      CardId.CURSED_DOLL, CardId.CURSED_DOLL, CardId.CURSED_DOLL, CardId.CURSED_DOLL,
+      // 技能牌 (10)
+      CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT, CardId.DARK_PACT,
+      CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM, CardId.MIST_FORM
   ],
-  baseDrawCount: 3,
+  baseDrawCount: 8, // Changed to 8
   fixedStartingHand: [CardId.DRAIN_LIFE]
 };
