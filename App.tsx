@@ -35,6 +35,19 @@ const useOrientation = () => {
     return isPortrait;
 };
 
+// Helper for fullscreen
+const enterFullScreen = () => {
+    const docEl = document.documentElement as any;
+    const requestFull = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+    if (requestFull) {
+        requestFull.call(docEl).catch((e: any) => console.log("Fullscreen blocked", e));
+    }
+    // Attempt orientation lock
+    if (screen.orientation && (screen.orientation as any).lock) {
+        (screen.orientation as any).lock('landscape').catch(() => {});
+    }
+};
+
 const App: React.FC = () => {
   const game = useGame();
   const isPortrait = useOrientation();
@@ -90,7 +103,9 @@ const App: React.FC = () => {
             if (e.cancelable) e.preventDefault();
             
             const { x, y } = getEventXY(e);
-            updateDragState({ ...ds, currentX: x, currentY: y });
+            // For touch, offset the ghost slightly up so finger doesn't cover it
+            const offsetY = ('touches' in e) ? -60 : 0;
+            updateDragState({ ...ds, currentX: x, currentY: y + offsetY });
         }
     };
 
@@ -176,10 +191,11 @@ const App: React.FC = () => {
 
       const { x, y } = getEventXY(e as any);
       const needsTarget = card.effects.some(ef => ef.target === TargetType.SINGLE_ENEMY);
+      const offsetY = ('touches' in e) ? -60 : 0;
       
       updateDragState({
           isDragging: true, itemId: card.id,
-          startX: x, startY: y, currentX: x, currentY: y,
+          startX: x, startY: y, currentX: x, currentY: y + offsetY,
           dragType: 'CARD', needsTarget, groupTag: card.groupTag, theme: card.theme,
           sourceItem: card
       });
@@ -192,10 +208,11 @@ const App: React.FC = () => {
 
       const { x, y } = getEventXY(e as any);
       const needsTarget = skill.effects?.some(ef => ef.target === TargetType.SINGLE_ENEMY) || false;
-      
+      const offsetY = ('touches' in e) ? -60 : 0;
+
       updateDragState({
           isDragging: true, itemId: skill.id,
-          startX: x, startY: y, currentX: x, currentY: y,
+          startX: x, startY: y, currentX: x, currentY: y + offsetY,
           dragType: 'SKILL', needsTarget, theme: CardTheme.HOLY,
           sourceItem: skill
       });
@@ -241,11 +258,14 @@ const App: React.FC = () => {
   // --- 屏幕渲染 ---
 
   const renderStart = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-amber-50 relative overflow-hidden p-4 text-center">
+    <div className="flex flex-col items-center justify-center h-screen bg-amber-50 relative overflow-hidden p-4 text-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
       <h1 className="text-5xl md:text-7xl font-black text-rose-500 mb-4 md:mb-8 animate-pop drop-shadow-lg tracking-tighter">表情包大乱斗</h1>
       <div className="text-7xl md:text-9xl mb-8 md:mb-12 animate-float drop-shadow-2xl">🏰</div>
-      <button onClick={() => game.setPhase('CHARACTER_SELECT')} className="group relative px-12 py-4 md:px-16 md:py-6 bg-rose-500 text-white text-xl md:text-3xl font-black rounded-full shadow-[0_6px_0_rgb(190,18,60)] md:shadow-[0_10px_0_rgb(190,18,60)] hover:shadow-[0_4px_0_rgb(190,18,60)] hover:translate-y-1 active:shadow-none active:translate-y-3 transition-all">
+      <button onClick={() => {
+          enterFullScreen();
+          game.setPhase('CHARACTER_SELECT');
+      }} className="group relative px-12 py-4 md:px-16 md:py-6 bg-rose-500 text-white text-xl md:text-3xl font-black rounded-full shadow-[0_6px_0_rgb(190,18,60)] md:shadow-[0_10px_0_rgb(190,18,60)] hover:shadow-[0_4px_0_rgb(190,18,60)] hover:translate-y-1 active:shadow-none active:translate-y-3 transition-all">
         <span className="relative z-10">开始冒险</span>
         <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </button>
@@ -253,14 +273,14 @@ const App: React.FC = () => {
   );
 
   const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-amber-50">
+    <div className="flex flex-col items-center justify-center h-screen bg-amber-50 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="text-9xl mb-8 animate-spin filter drop-shadow-xl">⏳</div>
       <h2 className="text-3xl md:text-4xl font-black text-slate-700 animate-pulse">生成地下城...</h2>
     </div>
   );
 
   const renderCharSelect = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-slate-100 p-4 md:p-8 relative overflow-y-auto">
+    <div className="flex flex-col items-center justify-center h-screen bg-slate-100 p-4 md:p-8 relative overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute inset-0 bg-grid-slate-200/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] fixed"></div>
       <h2 className="text-3xl md:text-5xl font-black text-slate-800 mb-8 md:mb-12 z-10 mt-8 md:mt-0">选择你的英雄</h2>
       <div className="flex gap-4 md:gap-8 flex-wrap justify-center z-10 pb-8">
@@ -312,7 +332,7 @@ const App: React.FC = () => {
   );
 
   const renderReward = () => (
-    <div className="absolute inset-0 z-50 bg-slate-900/90 flex flex-col items-center justify-center animate-pop backdrop-blur-sm p-4">
+    <div className="absolute inset-0 z-50 bg-slate-900/90 flex flex-col items-center justify-center animate-pop backdrop-blur-sm p-4 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute top-8 md:top-20 text-4xl md:text-6xl animate-bounce">🎁</div>
       <h2 className="text-3xl md:text-5xl text-white font-black mb-8 md:mb-12 text-stroke-sm">战斗胜利！选择奖励</h2>
       <div className="flex gap-4 md:gap-8 flex-wrap justify-center mb-8 md:mb-12">
@@ -352,8 +372,14 @@ const App: React.FC = () => {
   );
 
   const renderGame = () => (
-    <div className="relative w-full h-screen bg-amber-50 overflow-hidden flex flex-col select-none font-sans touch-none">
+    <div className="relative w-full h-screen bg-amber-50 overflow-hidden flex flex-col select-none font-sans touch-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] opacity-40 pointer-events-none"></div>
+      
+      {/* Fullscreen Toggle Button */}
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-50 opacity-50 hover:opacity-100 transition-opacity">
+          <button onClick={enterFullScreen} className="bg-black/20 p-2 rounded-lg text-white text-lg">⛶</button>
+      </div>
+
       <VFXLayer events={game.vfxEvents} />
       {game.phase === 'REWARD' && renderReward()}
       {game.phase === 'GAME_OVER' && (
@@ -469,7 +495,7 @@ const App: React.FC = () => {
       </div>
 
       {/* --- Hand & UI Bottom --- */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 md:h-64 z-20 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 h-48 md:h-64 z-20 pointer-events-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
           {/* Draw Pile */}
           <div 
             className="absolute left-2 md:left-8 bottom-2 md:bottom-8 pointer-events-auto group hidden md:block cursor-pointer active:scale-95 transition-transform"
@@ -490,8 +516,8 @@ const App: React.FC = () => {
               </div>
           </div>
 
-          {/* End Turn Button - Mobile Optimized */}
-          <div className="absolute bottom-24 right-2 md:bottom-36 md:right-8 pointer-events-auto z-30 flex flex-col items-end gap-2">
+          {/* End Turn Button - Mobile Optimized Position */}
+          <div className="absolute bottom-48 right-2 md:bottom-36 md:right-8 pointer-events-auto z-30 flex flex-col items-end gap-2">
               <button 
                 onClick={game.endTurn} 
                 onTouchEnd={(e) => { e.stopPropagation(); game.endTurn(); }}
