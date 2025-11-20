@@ -285,7 +285,8 @@ const App: React.FC = () => {
                                  currentEnergy: char.maxEnergy, 
                                  skills: [char.initialSkill],
                                  baseDrawCount: char.baseDrawCount,
-                                 fixedStartingHand: char.fixedStartingHand || []
+                                 fixedStartingHand: char.fixedStartingHand || [],
+                                 emoji: char.emoji
                              }));
                              game.setLevel(1);
                              game.startLevel(1, starter);
@@ -424,7 +425,7 @@ const App: React.FC = () => {
              
              {/* Player Avatar */}
              <div className="text-7xl md:text-9xl filter drop-shadow-2xl mb-2 md:mb-4 relative z-10 animate-float-slow">
-                 🤨
+                 {game.player.emoji}
              </div>
              {/* Shadow */}
              <div className="w-16 md:w-24 h-4 md:h-6 bg-black/20 rounded-[50%] blur-md animate-shadow"></div>

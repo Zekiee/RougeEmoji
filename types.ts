@@ -165,6 +165,7 @@ export interface Player {
   skills: Skill[]; // 拥有的技能列表
   baseDrawCount: number;
   fixedStartingHand: CardId[]; // 更新为枚举类型
+  emoji: string; // 玩家头像
 }
 
 export interface FloatingText {

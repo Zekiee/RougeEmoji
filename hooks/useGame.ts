@@ -13,7 +13,7 @@ export const useGame = () => {
   
   const [player, setPlayer] = useState<Player>({
     maxHp: 100, currentHp: 100, maxEnergy: 3, currentEnergy: 3, block: 0, statuses: [], skills: [],
-    baseDrawCount: 5, fixedStartingHand: []
+    baseDrawCount: 5, fixedStartingHand: [], emoji: '🤨'
   });
   
   const [deck, setDeck] = useState<Card[]>([]);
