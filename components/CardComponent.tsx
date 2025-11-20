@@ -1,0 +1,125 @@
+
+import React from 'react';
+import { Card, CardType, TargetType, CardTheme } from '../types';
+
+interface CardProps {
+  card: Card;
+  onMouseDown?: (e: React.MouseEvent, card: Card) => void;
+  onClick?: (e: React.MouseEvent, card: Card) => void;
+  playable: boolean;
+  disabled?: boolean;
+  selected?: boolean;
+  isDragging?: boolean;
+  isGroupHighlighted?: boolean;
+  index?: number; // 用于动画延迟
+}
+
+const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playable, disabled, selected, isDragging, isGroupHighlighted, index = 0 }) => {
+  
+  const getTypeColor = (type: CardType) => {
+    switch (type) {
+      case CardType.ATTACK: return 'bg-rose-500';
+      case CardType.SKILL: return 'bg-sky-500';
+      case CardType.POWER: return 'bg-emerald-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
+  const getThemeStyle = (theme?: CardTheme) => {
+      switch(theme) {
+          case CardTheme.FIRE: return 'shadow-[0_4px_0_#c2410c] border-orange-100 bg-orange-50';
+          case CardTheme.ICE: return 'shadow-[0_4px_0_#0e7490] border-cyan-100 bg-cyan-50';
+          case CardTheme.POISON: return 'shadow-[0_4px_0_#7e22ce] border-purple-100 bg-purple-50';
+          case CardTheme.DARK: return 'shadow-[0_4px_0_#374151] border-gray-400 bg-gray-100';
+          case CardTheme.HOLY: return 'shadow-[0_4px_0_#a16207] border-yellow-100 bg-yellow-50';
+          default: return 'shadow-[0_4px_0_#94a3b8] border-white bg-slate-50';
+      }
+  };
+
+  const getTypeLabel = (type: CardType) => {
+    switch (type) {
+      case CardType.ATTACK: return '攻击';
+      case CardType.SKILL: return '技能';
+      case CardType.POWER: return '能力';
+      default: return '未知';
+    }
+  };
+
+  const getTargetIcon = () => {
+    const mainEffect = card.effects[0];
+    if (!mainEffect) return null;
+    switch(mainEffect.target) {
+        case TargetType.ALL_ENEMIES: return <span className="text-[9px] bg-yellow-400 text-black px-1 rounded font-black tracking-tighter shadow-sm">ALL</span>;
+        case TargetType.RANDOM_ENEMY: return <span className="text-[9px] bg-purple-400 text-white px-1 rounded font-black tracking-tighter shadow-sm">RND</span>;
+        case TargetType.SELF: return <span className="text-[9px] bg-green-500 text-white px-1 rounded font-black tracking-tighter shadow-sm">SELF</span>;
+        default: return null;
+    }
+  };
+
+  // Ghost visual for dragging placeholder
+  if (isDragging) {
+    return <div className="w-32 h-48 rounded-xl border-2 border-dashed border-black/20 bg-black/5 opacity-30"></div>;
+  }
+
+  return (
+    <div 
+      onMouseDown={(e) => playable && !disabled && onMouseDown && onMouseDown(e, card)}
+      onClick={(e) => playable && !disabled && onClick && onClick(e, card)}
+      style={{ animationDelay: `${index * 0.05}s` }}
+      className={`
+        relative w-32 h-48 rounded-xl border-[3px] 
+        transition-all duration-200 transform select-none
+        flex flex-col overflow-hidden animate-draw-card origin-bottom
+        ${getThemeStyle(card.theme)}
+        ${selected ? 'ring-4 ring-yellow-400 -translate-y-8 scale-110 z-50' : ''}
+        ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-4 scale-105' : ''}
+        ${playable && !disabled && !selected && !isGroupHighlighted ? 'hover:-translate-y-12 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
+        ${disabled && !selected ? 'opacity-80 grayscale cursor-not-allowed brightness-90' : ''}
+      `}
+    >
+      {/* Cost Bubble */}
+      <div className="absolute -top-2 -left-2 w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center z-20 shadow-[0_2px_0_#1e3a8a] border-2 border-white">
+        <span className="text-white font-black text-lg font-sans drop-shadow-md">{card.cost}</span>
+      </div>
+
+      {/* Group Tag Indicator */}
+      {card.groupTag && <div className="absolute -top-1 -right-1 z-30 text-sm bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-sm border border-gray-200">🔗</div>}
+      
+      {/* Target Icon */}
+      <div className="absolute top-2 right-2 z-20">{getTargetIcon()}</div>
+      
+      {/* Card Art Area */}
+      <div className={`h-24 w-full flex items-center justify-center text-6xl relative overflow-hidden bg-white/50`}>
+        <div className={`absolute inset-0 opacity-10 bg-current`} style={{color: card.theme === CardTheme.FIRE ? 'red' : 'black'}}></div>
+        <span className="filter drop-shadow-md transform hover:scale-110 transition-transform duration-300 relative z-10">{card.emoji || '🃏'}</span>
+      </div>
+
+      {/* Type Ribbon */}
+      <div className={`h-5 ${getTypeColor(card.type)} w-full flex items-center justify-center shadow-sm relative z-10`}>
+        <span className="text-white text-[10px] font-black uppercase tracking-widest drop-shadow-sm">{getTypeLabel(card.type)}</span>
+      </div>
+
+      {/* Name */}
+      <div className="px-1 pt-2 pb-0 text-center h-8 flex items-center justify-center">
+        <h3 className="font-black text-slate-800 text-xs leading-tight line-clamp-2">{card.name}</h3>
+      </div>
+
+      {/* Description */}
+      <div className="flex-1 px-2 pb-2 text-center flex items-start justify-center overflow-hidden">
+        <p className="text-[9px] text-slate-600 font-bold leading-tight">{card.description}</p>
+      </div>
+      
+      <style>{`
+        @keyframes draw-card-anim {
+            0% { transform: translate(-50px, 100px) rotate(-20deg); opacity: 0; }
+            100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+        }
+        .animate-draw-card {
+            animation: draw-card-anim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default CardComponent;
