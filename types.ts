@@ -211,3 +211,18 @@ export interface VFXEvent {
 }
 
 export type GamePhase = 'START_SCREEN' | 'CHARACTER_SELECT' | 'PLAYER_TURN' | 'ENEMY_TURN' | 'REWARD' | 'GAME_OVER' | 'LOADING';
+
+// --- UI/Drag ---
+export interface DragState {
+    isDragging: boolean;
+    itemId: string | null; 
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    dragType: 'CARD' | 'SKILL';
+    needsTarget: boolean;
+    groupTag?: string;
+    theme?: CardTheme;
+    sourceItem?: Card | Skill;
+}
