@@ -178,14 +178,14 @@ export const App = () => {
           {renderGhost()}
           
           {/* Portrait Warning Overlay */}
-          {isPortrait && (
+          {/*isPortrait && (
               <div className="fixed inset-0 bg-slate-900/95 z-[9999] flex flex-col items-center justify-center text-white p-8 animate-pop">
                   <div className="text-8xl mb-8 animate-bounce">📱</div>
                   <h2 className="text-3xl font-black mb-4 text-center">请横屏游戏</h2>
                   <p className="text-slate-400 text-center">为了最佳体验，请旋转您的手机</p>
                   <div className="mt-12 w-16 h-24 border-4 border-white rounded-xl animate-spin"></div>
               </div>
-          )}
+          )*/}
       </div>
   );
 };
