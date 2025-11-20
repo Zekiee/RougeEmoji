@@ -74,12 +74,27 @@
         50% { transform: scaleX(0.9); opacity: 0.3; }
       }
 
+      /* 死亡动画 */
+      @keyframes death-pop {
+        0% { transform: scale(1); opacity: 1; }
+        20% { transform: scale(1.2) rotate(5deg); opacity: 1; filter: brightness(2) grayscale(0); }
+        100% { transform: scale(0) rotate(-10deg); opacity: 0; filter: grayscale(1); }
+      }
+
+      @keyframes soul-rise {
+        0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+        20% { transform: translate(-50%, -30px) scale(1.2); opacity: 0.8; }
+        100% { transform: translate(-50%, -100px) scale(1.5); opacity: 0; }
+      }
+
       .animate-float { animation: float 3s ease-in-out infinite; }
       .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
       .animate-pop { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .animate-shake { animation: shake 0.4s ease-in-out; }
       .animate-damage { animation: damage-float 1s ease-out forwards; }
       .animate-shadow { animation: shadow-breath 3s ease-in-out infinite; }
+      .animate-death-pop { animation: death-pop 0.6s ease-in-out forwards; }
+      .animate-soul-rise { animation: soul-rise 1.2s ease-out forwards; }
 
       /* 隐藏卡牌历史记录的滚动条 */
       ::-webkit-scrollbar { width: 0px; background: transparent; }

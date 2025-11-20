@@ -542,7 +542,7 @@ const App: React.FC = () => {
                                     card={card} 
                                     index={index}
                                     playable={game.phase === 'PLAYER_TURN' && game.player.currentEnergy >= card.cost} 
-                                    disabled={game.phase !== 'PLAYER_TURN'}
+                                    disabled={game.phase !== 'PLAYER_TURN' || game.player.currentEnergy < card.cost}
                                     isDragging={isBeingDragged}
                                     isGroupHighlighted={isGroupMatch}
                                     onMouseDown={startDragCard}
