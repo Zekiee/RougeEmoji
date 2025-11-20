@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardType, TargetType, CardTheme } from '../types';
 
@@ -49,9 +48,9 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
     const mainEffect = card.effects[0];
     if (!mainEffect) return null;
     switch(mainEffect.target) {
-        case TargetType.ALL_ENEMIES: return <span className="text-[9px] md:text-[10px] bg-yellow-400 text-black px-1 rounded font-black tracking-tighter shadow-sm">ALL</span>;
-        case TargetType.RANDOM_ENEMY: return <span className="text-[9px] md:text-[10px] bg-purple-400 text-white px-1 rounded font-black tracking-tighter shadow-sm">RND</span>;
-        case TargetType.SELF: return <span className="text-[9px] md:text-[10px] bg-green-500 text-white px-1 rounded font-black tracking-tighter shadow-sm">SELF</span>;
+        case TargetType.ALL_ENEMIES: return <span className="text-[10px] md:text-xs bg-yellow-400 text-black px-1 rounded font-black tracking-tighter shadow-sm">ALL</span>;
+        case TargetType.RANDOM_ENEMY: return <span className="text-[10px] md:text-xs bg-purple-400 text-white px-1 rounded font-black tracking-tighter shadow-sm">RND</span>;
+        case TargetType.SELF: return <span className="text-[10px] md:text-xs bg-green-500 text-white px-1 rounded font-black tracking-tighter shadow-sm">SELF</span>;
         default: return null;
     }
   };
@@ -112,12 +111,12 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
 
       {/* Description */}
       <div className="flex-1 px-2 md:px-3 pb-2 text-center flex items-start justify-center overflow-hidden flex-col">
-        <p className="text-[10px] md:text-xs text-slate-600 font-bold leading-tight scale-95 origin-top">{card.description}</p>
+        <p className="text-[10px] md:text-sm text-slate-600 font-bold leading-tight scale-95 origin-top">{card.description}</p>
       </div>
       
       {/* Hand Passive Indicator (New) */}
       {card.handPassive && (
-          <div className="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-[9px] font-bold text-center py-0.5 border-t border-yellow-200 z-10">
+          <div className="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-[9px] md:text-[10px] font-bold text-center py-0.5 border-t border-yellow-200 z-10">
               ✋ 保留有益
           </div>
       )}

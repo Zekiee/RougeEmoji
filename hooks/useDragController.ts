@@ -1,20 +1,20 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { DragState, Card, Skill, TargetType, CardTheme } from '../types';
+import { DESIGN_WIDTH, DESIGN_HEIGHT } from './useWindowScale';
 
 interface UseDragControllerProps {
-    game: any; // Using any here to avoid circular dependency hell or complex typing for the hook, but conceptually it's the object from useGame
+    game: any;
+    scale: number;
+    isPortrait: boolean;
 }
 
-export const useDragController = ({ game }: UseDragControllerProps) => {
+export const useDragController = ({ game, scale, isPortrait }: UseDragControllerProps) => {
     const dragStateRef = useRef<DragState>({
         isDragging: false, itemId: null, startX: 0, startY: 0, currentX: 0, currentY: 0, dragType: 'CARD', needsTarget: false
     });
     
-    // Sync state for rendering
     const [dragState, setDragState] = useState<DragState>(dragStateRef.current);
-    
-    // Ref to game to avoid stale closures in event listeners
     const gameRef = useRef(game);
     useEffect(() => { gameRef.current = game; }, [game]);
 
@@ -23,16 +23,63 @@ export const useDragController = ({ game }: UseDragControllerProps) => {
         setDragState(newState);
     };
 
-    // 统一获取坐标的辅助函数
-    const getEventXY = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
+    // Transform Screen Coordinates (clientX/Y) to Game Coordinates (0-1600, 0-900)
+    const getGameXY = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
+        let clientX = 0;
+        let clientY = 0;
+
         if ('touches' in e && e.touches.length > 0) {
-            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         } else if ('changedTouches' in e && e.changedTouches.length > 0) {
-            return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
         } else if ('clientX' in e) {
-            return { x: e.clientX, y: e.clientY };
+            clientX = (e as React.MouseEvent).clientX;
+            clientY = (e as React.MouseEvent).clientY;
         }
-        return { x: 0, y: 0 };
+
+        // Center of the screen
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        // Vector from center
+        const dx = clientX - centerX;
+        const dy = clientY - centerY;
+
+        let gameX = 0;
+        let gameY = 0;
+
+        if (isPortrait) {
+            // If rotated 90deg clockwise:
+            // Screen X+ maps to Game Y+
+            // Screen Y+ maps to Game X- (inverted)
+            // Need to reverse the rotation logic carefully based on CSS rotate(90deg)
+            
+            // Visual: Top of Phone (Screen Y=0) is Left of Game (Game X=0)
+            // Visual: Right of Phone (Screen X=Max) is Top of Game (Game Y=0) -> Wait, CSS rotate(90)
+            
+            // CSS rotate(90deg) turns the element clockwise.
+            // Screen Top (Y=0) -> aligns with Game Left
+            // Screen Right (X=Max) -> aligns with Game Top
+            
+            // Let's use un-rotated vector logic
+            // Rotate vector -90deg to map back to local space
+            // x' = x*cos(-90) - y*sin(-90) = y
+            // y' = x*sin(-90) + y*cos(-90) = -x
+            
+            gameX = dy / scale;
+            gameY = -dx / scale;
+        } else {
+            gameX = dx / scale;
+            gameY = dy / scale;
+        }
+
+        // Add offset to return to 0-1600 coordinate space (from center-relative)
+        return { 
+            x: gameX + DESIGN_WIDTH / 2, 
+            y: gameY + DESIGN_HEIGHT / 2 
+        };
     };
 
     useEffect(() => {
@@ -40,19 +87,26 @@ export const useDragController = ({ game }: UseDragControllerProps) => {
             const ds = dragStateRef.current;
             if (ds.isDragging) {
                 if (e.cancelable) e.preventDefault();
-                
-                const { x, y } = getEventXY(e);
-                const offsetY = ('touches' in e) ? -60 : 0;
-                updateDragState({ ...ds, currentX: x, currentY: y + offsetY });
+                const { x, y } = getGameXY(e);
+                updateDragState({ ...ds, currentX: x, currentY: y });
             }
         };
 
         const handleDrop = (e: MouseEvent | TouchEvent) => {
             const ds = dragStateRef.current;
             const currentGame = gameRef.current;
-            const { x: clientX, y: clientY } = getEventXY(e);
+            const { x, y } = getGameXY(e); // Get Game Coordinates
             const { needsTarget, itemId, dragType, groupTag } = ds;
             
+            // Hit Test using Document (Screen Coordinates) for Element detection
+            // We still use document.elementsFromPoint with raw client coordinates to find the DIV
+            let clientX = 0, clientY = 0;
+            if('changedTouches' in e && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
+            } else if ('clientX' in e) {
+                clientX = (e as MouseEvent).clientX; clientY = (e as MouseEvent).clientY;
+            }
+
             const elements = document.elementsFromPoint(clientX, clientY);
             const enemyElement = elements.find(el => el.hasAttribute('data-enemy-id'));
             const targetId = enemyElement?.getAttribute('data-enemy-id');
@@ -72,8 +126,9 @@ export const useDragController = ({ game }: UseDragControllerProps) => {
                     }
                 }
             } else {
-                // 调整判定区域
-                if (clientY < window.innerHeight * 0.6 && itemId) {
+                // Drop zone logic (Upper area of the screen)
+                // In Game Coordinates: Y < 600 (approx 2/3 up)
+                if (y < 600 && itemId) {
                      if (dragType === 'CARD') {
                          const card = currentGame.hand.find((c: Card) => c.id === itemId);
                          if (card) currentGame.playCard(card, undefined, ds.startX, ds.startY);
@@ -105,14 +160,14 @@ export const useDragController = ({ game }: UseDragControllerProps) => {
             window.removeEventListener('touchend', handleEnd);
             window.removeEventListener('touchcancel', handleEnd);
         };
-    }, []);
+    }, [scale, isPortrait]); // Re-bind if scale/orientation changes to ensure math is correct
 
     const startDragCard = (e: React.MouseEvent | React.TouchEvent, card: Card) => {
         if (gameRef.current.phase !== 'PLAYER_TURN' || gameRef.current.player.currentEnergy < card.cost) return;
         
-        const { x, y } = getEventXY(e);
+        const { x, y } = getGameXY(e);
         const needsTarget = card.effects.some(ef => ef.target === TargetType.SINGLE_ENEMY);
-        const offsetY = ('touches' in e) ? -60 : 0;
+        const offsetY = -100; // Visual lift in Game Units
         
         updateDragState({
             isDragging: true, itemId: card.id,
@@ -127,9 +182,9 @@ export const useDragController = ({ game }: UseDragControllerProps) => {
             (skill.cost && gameRef.current.player.currentEnergy < skill.cost) || 
             (skill.currentCooldown || 0) > 0) return;
 
-        const { x, y } = getEventXY(e);
+        const { x, y } = getGameXY(e);
         const needsTarget = skill.effects?.some(ef => ef.target === TargetType.SINGLE_ENEMY) || false;
-        const offsetY = ('touches' in e) ? -60 : 0;
+        const offsetY = -100;
 
         updateDragState({
             isDragging: true, itemId: skill.id,

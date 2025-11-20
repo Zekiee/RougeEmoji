@@ -12,11 +12,12 @@ import StartScreen from './components/screens/StartScreen';
 import CharacterSelectScreen from './components/screens/CharacterSelectScreen';
 import GameScreen from './components/screens/GameScreen';
 import SettingsModal from './components/SettingsModal';
+import VFXLayer from './components/VFXLayer'; 
 
 export const App = () => {
   const game = useGame();
-  const { globalScale, isPortrait } = useWindowScale();
-  const { dragState, startDragCard, startDragSkill } = useDragController({ game });
+  const { containerStyle, scale, isPortrait } = useWindowScale();
+  const { dragState, startDragCard, startDragSkill } = useDragController({ game, scale, isPortrait });
 
   const [maxLevelReached, setMaxLevelReached] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
@@ -34,44 +35,54 @@ export const App = () => {
       }
   }, [game.level, maxLevelReached]);
 
-  // --- Helper for entering fullscreen (passed to start button) ---
+  // --- Helper for entering fullscreen ---
   const enterFullScreen = () => {
     const docEl = document.documentElement as any;
     const requestFull = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
     if (requestFull) {
         requestFull.call(docEl).catch((e: any) => console.log("Fullscreen blocked", e));
     }
-    // Attempt orientation lock
+    // Attempt orientation lock (some browsers allow this)
     const screen = window.screen as any;
     if (screen && screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
     }
   };
 
-  // --- Render Helpers for Global Overlays ---
+  // --- Render Helpers ---
   const renderArrow = () => {
       if (!dragState.isDragging || !dragState.needsTarget) return null;
       const { startX, startY, currentX, currentY } = dragState;
-      const controlX = startX; const controlY = currentY;
+      
+      // Control point for Quadratic Bezier
+      const controlX = startX; 
+      const controlY = currentY;
+      
       const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${currentX} ${currentY}`;
+      
+      // Calculate arrow head rotation
+      // Tangent at end point (t=1) for Q bezier B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+      // Derivative B'(t) = 2(1-t)(P1-P0) + 2t(P2-P1)
+      // At t=1: B'(1) = 2(P2-P1) -> vector from Control to End
       const angle = Math.atan2(currentY - controlY, currentX - controlX) * 180 / Math.PI;
-      let color = "rgb(244, 63, 94)";
+      
+      let color = "rgb(244, 63, 94)"; // Rose-500
       if (dragState.theme === CardTheme.ICE) color = "rgb(103, 232, 249)";
       if (dragState.theme === CardTheme.POISON) color = "rgb(168, 85, 247)";
 
       return (
-          <svg className="fixed inset-0 w-full h-full pointer-events-none z-[9999] overflow-visible">
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-[90] overflow-visible">
               <defs>
                   <filter id="glow">
-                      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                       <feMerge>
                           <feMergeNode in="coloredBlur"/>
                           <feMergeNode in="SourceGraphic"/>
                       </feMerge>
                   </filter>
               </defs>
-              <path d={path} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray="12,12" className="animate-[dash_0.8s_linear_infinite]" filter="url(#glow)" />
-              <polygon points="0,0 24,9 0,18" fill={color} transform={`translate(${currentX}, ${currentY}) rotate(${angle}) translate(-20, -9)`} filter="url(#glow)" />
+              <path d={path} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray="20,15" className="animate-[dash_0.5s_linear_infinite]" filter="url(#glow)" />
+              <polygon points="0,0 30,12 0,24" fill={color} transform={`translate(${currentX}, ${currentY}) rotate(${angle}) translate(-30, -12)`} filter="url(#glow)" />
           </svg>
       );
   };
@@ -80,38 +91,34 @@ export const App = () => {
       if (!dragState.isDragging || dragState.needsTarget) return null;
       return (
           <div 
-            className="fixed pointer-events-none z-[9999] opacity-60 transform -translate-x-1/2 -translate-y-1/2" 
+            className="absolute pointer-events-none z-[100] opacity-70" 
             style={{ 
                 left: dragState.currentX, 
                 top: dragState.currentY,
-                transform: `translate(-50%, -50%) scale(${1.25 * globalScale})` 
+                transform: `translate(-50%, -50%) scale(1.5)` 
             }}
           >
-              <div className="text-7xl filter drop-shadow-2xl animate-pulse">{dragState.sourceItem?.emoji || '🃏'}</div>
+              <div className="text-8xl filter drop-shadow-2xl">{dragState.sourceItem?.emoji || '🃏'}</div>
           </div>
       );
   };
 
   const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center h-full bg-amber-50 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-amber-50">
       <div className="text-9xl mb-8 animate-spin filter drop-shadow-xl">⏳</div>
-      <h2 className="text-3xl md:text-4xl font-black text-slate-700 animate-pulse">生成地下城...</h2>
+      <h2 className="text-5xl font-black text-slate-700 animate-pulse">生成地下城...</h2>
     </div>
   );
 
   // --- Main Render ---
   return (
-      <div className="fixed inset-0 bg-amber-50 overflow-hidden flex items-center justify-center select-none">
-          {/* Global Scaled Stage */}
-          <div 
-              style={{ 
-                  width: `${window.innerWidth / globalScale}px`, 
-                  height: `${window.innerHeight / globalScale}px`, 
-                  transform: `scale(${globalScale})`,
-                  transformOrigin: 'center center'
-              }}
-              className="relative shadow-2xl overflow-hidden bg-amber-50"
-          >
+      <div className="fixed inset-0 bg-stone-900 overflow-hidden select-none">
+          {/* 
+             The Virtual 1600x900 Container.
+             Everything inside works with 1600x900 coordinates.
+          */}
+          <div style={containerStyle} className="bg-amber-50 shadow-2xl overflow-hidden">
+              
               {game.phase === 'START_SCREEN' && (
                   <StartScreen 
                       onStart={() => { enterFullScreen(); game.setPhase('CHARACTER_SELECT'); }}
@@ -171,21 +178,13 @@ export const App = () => {
                       }
                   }}
               />
-          </div>
 
-          {/* Global Overlays (Outside Scaler) */}
-          {renderArrow()}
-          {renderGhost()}
-          
-          {/* Portrait Warning Overlay */}
-          {/*isPortrait && (
-              <div className="fixed inset-0 bg-slate-900/95 z-[9999] flex flex-col items-center justify-center text-white p-8 animate-pop">
-                  <div className="text-8xl mb-8 animate-bounce">📱</div>
-                  <h2 className="text-3xl font-black mb-4 text-center">请横屏游戏</h2>
-                  <p className="text-slate-400 text-center">为了最佳体验，请旋转您的手机</p>
-                  <div className="mt-12 w-16 h-24 border-4 border-white rounded-xl animate-spin"></div>
-              </div>
-          )*/}
+              {/* Global Overlays INSIDE the scaled container */}
+              <VFXLayer events={game.vfxEvents} />
+              {renderArrow()}
+              {renderGhost()}
+              
+          </div>
       </div>
   );
 };
