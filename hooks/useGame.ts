@@ -6,12 +6,12 @@ import {
 } from '../types';
 import { generateId, CARD_REWARD_POOL, SKILL_REWARD_POOL } from '../constants';
 import { generateEnemyProfile } from '../services/geminiService';
-import { PRESET_ENEMIES } from '../data/enemies'; // 引入预设敌人用于召唤
+import { PRESET_ENEMIES } from '../data/enemies'; 
 
 export const useGame = () => {
   const [phase, setPhase] = useState<GamePhase>('START_SCREEN');
   const [level, setLevel] = useState(1);
-  const [turnCount, setTurnCount] = useState(1); // 新增：回合计数
+  const [turnCount, setTurnCount] = useState(1);
   
   const [player, setPlayer] = useState<Player>({
     maxHp: 100, currentHp: 100, maxEnergy: 3, currentEnergy: 3, block: 0, statuses: [], skills: [],
@@ -27,6 +27,7 @@ export const useGame = () => {
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [vfxEvents, setVfxEvents] = useState<VFXEvent[]>([]);
   const [shakingTargets, setShakingTargets] = useState<string[]>([]);
+  const [flashTargets, setFlashTargets] = useState<string[]>([]); // New: White flash on hit
   const [rewards, setRewards] = useState<{cards: Card[], skill?: any}>({cards: []});
 
   // --- VFX Helpers ---
@@ -35,18 +36,22 @@ export const useGame = () => {
       setVfxEvents(prev => [...prev, { id, type, startX, startY, endX, endY, theme }]);
       setTimeout(() => {
           setVfxEvents(prev => prev.filter(e => e.id !== id));
-      }, 500); // VFX 持续时间
+      }, 600);
   };
 
-  const addFloatingText = (text: string, x: number, y: number, color: string = 'text-white') => {
+  const addFloatingText = (text: string, targetId: string | null, x?: number, y?: number, color: string = 'text-white', size: 'small' | 'medium' | 'large' = 'medium') => {
     const id = Date.now() + Math.random();
-    setFloatingTexts(prev => [...prev, { id, text, x, y, color }]);
+    setFloatingTexts(prev => [...prev, { id, text, targetId: targetId || undefined, x, y, color, size }]);
     setTimeout(() => setFloatingTexts(prev => prev.filter(ft => ft.id !== id)), 1200);
   };
 
   const triggerShake = (targetId: string) => {
       setShakingTargets(prev => [...prev, targetId]);
-      setTimeout(() => setShakingTargets(prev => prev.filter(id => id !== targetId)), 500);
+      setFlashTargets(prev => [...prev, targetId]); // Trigger flash
+      setTimeout(() => {
+          setShakingTargets(prev => prev.filter(id => id !== targetId));
+          setFlashTargets(prev => prev.filter(id => id !== targetId));
+      }, 500);
   };
 
   // --- Combat Logic ---
@@ -58,12 +63,10 @@ export const useGame = () => {
           const strength = player.statuses.find(s => s.type === StatusType.STRENGTH)?.value || 0;
           dmg += strength;
           
-          // Passive: Mage Boost
           if (player.skills.some(s => s.type === SkillType.PASSIVE && s.passiveEffect === 'DAMAGE_BOOST_1')) {
               dmg += 1;
           }
 
-          // Hand Passives: Damage Boost
           const handDamageBonus = hand.reduce((acc, card) => {
               if (card.handPassive && card.handPassive.type === HandPassiveType.DAMAGE_BOOST) {
                   return acc + card.handPassive.value;
@@ -109,17 +112,26 @@ export const useGame = () => {
     }
 
     // VFX Trigger
-    if (targets.length > 0 && sourceCoords && (effect.type === EffectType.DAMAGE || effect.type === EffectType.APPLY_STATUS)) {
-        const targetEl = document.querySelector(`[data-enemy-id="${targets[0].id}"]`);
-        if (targetEl) {
-            const rect = targetEl.getBoundingClientRect();
-            triggerVFX('PROJECTILE', sourceCoords.x, sourceCoords.y, rect.left + rect.width/2, rect.top + rect.height/2, theme);
-        }
+    if (targets.length > 0 && sourceCoords) {
+         targets.forEach(t => {
+             const targetEl = document.querySelector(`[data-enemy-id="${t.id}"]`);
+             if (targetEl) {
+                 const rect = targetEl.getBoundingClientRect();
+                 // Adjust for 720p canvas scaling if needed, but rects are screen coords
+                 // Actually useDragController handles scaling, here we just need visual start/end
+                 // Use a simpler "Slash" at target location
+                 if (effect.type === EffectType.DAMAGE) {
+                     triggerVFX('SLASH', rect.left + rect.width/2, rect.top + rect.height/2, undefined, undefined, theme);
+                 } else if (effect.type === EffectType.APPLY_STATUS) {
+                     triggerVFX('PROJECTILE', sourceCoords.x, sourceCoords.y, rect.left + rect.width/2, rect.top + rect.height/2, theme);
+                 }
+             }
+         });
     }
 
     switch (effect.type) {
         case EffectType.DAMAGE: {
-            setTimeout(() => { // 延迟伤害以匹配投射物飞行时间
+            setTimeout(() => { 
                 targets.forEach(enemy => {
                     const dmg = calculateDamage(effect.value, 'PLAYER', enemy);
                     let finalDmg = dmg;
@@ -129,7 +141,7 @@ export const useGame = () => {
                         if (enemy.block >= dmg) {
                             setEnemies(prev => prev.map(e => e.id === enemy.id ? { ...e, block: e.block - dmg } : e));
                             finalDmg = 0;
-                            addFloatingText("格挡", 50, 40, 'text-gray-400');
+                            addFloatingText("格挡", enemy.id, undefined, undefined, 'text-gray-400', 'small');
                         } else {
                             finalDmg -= enemy.block;
                             setEnemies(prev => prev.map(e => e.id === enemy.id ? { ...e, block: 0 } : e));
@@ -139,40 +151,48 @@ export const useGame = () => {
                     if (finalDmg > 0) {
                         setEnemies(prev => prev.map(e => e.id === enemy.id ? { ...e, currentHp: Math.max(0, e.currentHp - finalDmg) } : e));
                         triggerShake(enemy.id);
-                        addFloatingText(`-${finalDmg}`, 50 + Math.random()*10, 30, 'text-red-500 font-black text-4xl');
+                        addFloatingText(`-${finalDmg}`, enemy.id, undefined, undefined, 'text-red-500 font-black', 'large');
+                        // Impact VFX on target
+                        const targetEl = document.querySelector(`[data-enemy-id="${enemy.id}"]`);
+                        if(targetEl) {
+                            const rect = targetEl.getBoundingClientRect();
+                             triggerVFX('IMPACT', rect.left + rect.width/2, rect.top + rect.height/2);
+                        }
                     }
                 });
-            }, 300);
+            }, 200); // Fast reaction
             break;
         }
         case EffectType.BLOCK:
             setPlayer(p => ({ ...p, block: p.block + effect.value }));
-            addFloatingText(`+${effect.value} 🛡️`, 20, 50, 'text-blue-400');
+            addFloatingText(`+${effect.value} 🛡️`, 'PLAYER', undefined, undefined, 'text-blue-400', 'medium');
+            triggerVFX('BUFF', window.innerWidth * 0.15, window.innerHeight * 0.6); // Rough player pos
             break;
         case EffectType.HEAL:
             setPlayer(p => ({ ...p, currentHp: Math.min(p.maxHp, p.currentHp + effect.value) }));
-            addFloatingText(`+${effect.value} ❤️`, 20, 60, 'text-green-500');
+            addFloatingText(`+${effect.value} ❤️`, 'PLAYER', undefined, undefined, 'text-green-500', 'medium');
             break;
         case EffectType.DRAW:
             drawCards(effect.value);
             break;
         case EffectType.ADD_ENERGY:
             setPlayer(p => ({ ...p, currentEnergy: p.currentEnergy + effect.value }));
-            addFloatingText(`+${effect.value} ⚡`, 15, 70, 'text-yellow-400');
+            addFloatingText(`+${effect.value} ⚡`, 'PLAYER', undefined, undefined, 'text-yellow-400', 'medium');
             break;
         case EffectType.APPLY_STATUS: {
             setTimeout(() => {
                 if (effect.target === TargetType.SELF) {
                     setPlayer(p => ({...p, statuses: applyStatus(p.statuses, effect.statusType!, effect.value)}));
-                    addFloatingText(`${effect.statusType}`, 20, 40, 'text-purple-400');
+                    addFloatingText(`${effect.statusType}`, 'PLAYER', undefined, undefined, 'text-purple-400', 'small');
                 } else {
                     targets.forEach(t => {
                         setEnemies(prev => prev.map(e => e.id === t.id ? {
                             ...e, statuses: applyStatus(e.statuses, effect.statusType!, effect.value)
                         } : e));
+                        addFloatingText(`${effect.statusType}`, t.id, undefined, undefined, 'text-purple-400', 'small');
                     });
                 }
-            }, 300);
+            }, 200);
             break;
         }
     }
@@ -194,11 +214,9 @@ export const useGame = () => {
       setHand([]);
       setDiscardPile([]);
       setDrawPile([]);
-      setTurnCount(1); // 重置回合数
+      setTurnCount(1);
 
       const profile = await generateEnemyProfile(lvl);
-      
-      // 难度曲线：指数增长 (1.15 ^ lvl)
       const scale = Math.pow(1.15, lvl - 1);
       const bossHp = Math.floor(100 * scale);
       
@@ -210,14 +228,12 @@ export const useGame = () => {
       };
       
       const initialEnemies = [mainEnemy];
-
-      // 初始召唤 1-2 个小兵，作为 Boss 的随从
       const numMinions = Math.floor(Math.random() * 2) + 1; 
       const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
       
       for (let i = 0; i < numMinions; i++) {
           const t = minionTemplates[Math.floor(Math.random() * minionTemplates.length)];
-          const minionHp = Math.floor(bossHp * 0.3); // 小兵血量是 Boss 的 30%
+          const minionHp = Math.floor(bossHp * 0.3); 
           initialEnemies.push({
               id: generateId(),
               name: t.name, description: t.description, emoji: t.emoji,
@@ -228,7 +244,7 @@ export const useGame = () => {
 
       setEnemies(initialEnemies);
       
-      // Deck Init Logic
+      // Deck Init
       const initialDrawPile = [...currentDeck].sort(() => Math.random() - 0.5);
       let initialHand: Card[] = [];
 
@@ -311,14 +327,14 @@ export const useGame = () => {
 
       if (consumeDouble) {
            setPlayer(p => ({...p, statuses: p.statuses.filter(s => s.type !== StatusType.DOUBLE_NEXT_ATTACK)}));
-           addFloatingText("双倍消耗!", 20, 70, 'text-yellow-400');
+           addFloatingText("双倍消耗!", 'PLAYER', undefined, undefined, 'text-yellow-400', 'small');
       }
   };
 
   const playCardBatch = (cards: Card[], targetId?: string, startX?: number, startY?: number) => {
       const totalCost = cards.reduce((sum, c) => sum + c.cost, 0);
       if (player.currentEnergy < totalCost) {
-          addFloatingText("能量不足!", 50, 50, 'text-red-500');
+          addFloatingText("能量不足!", 'PLAYER', undefined, undefined, 'text-red-500', 'medium');
           return;
       }
       setPlayer(p => ({ ...p, currentEnergy: p.currentEnergy - totalCost }));
@@ -354,10 +370,10 @@ export const useGame = () => {
               const { type, value } = card.handPassive;
               if (type === HandPassiveType.HEAL_ON_TURN_END) {
                   setPlayer(p => ({ ...p, currentHp: Math.min(p.maxHp, p.currentHp + value) }));
-                  addFloatingText(`+${value} ❤️`, 20, 60, 'text-green-500');
+                  addFloatingText(`+${value} ❤️`, 'PLAYER', undefined, undefined, 'text-green-500', 'medium');
               } else if (type === HandPassiveType.BLOCK_ON_TURN_END) {
                   setPlayer(p => ({ ...p, block: p.block + value }));
-                  addFloatingText(`+${value} 🛡️`, 20, 50, 'text-blue-400');
+                  addFloatingText(`+${value} 🛡️`, 'PLAYER', undefined, undefined, 'text-blue-400', 'medium');
               }
           }
       });
@@ -378,7 +394,7 @@ export const useGame = () => {
 
           if (!hasPlayableCard && !hasUsableSkill) {
               const timer = setTimeout(() => {
-                  addFloatingText("无牌可出", 50, 20, 'text-gray-400 text-2xl font-bold');
+                  addFloatingText("无牌可出", 'PLAYER', undefined, undefined, 'text-gray-400 text-2xl font-bold');
                   endTurn();
               }, 1500);
               return () => clearTimeout(timer);
@@ -390,9 +406,8 @@ export const useGame = () => {
   useEffect(() => {
     if (phase === 'ENEMY_TURN') {
         const runEnemyAI = async () => {
-            // 狂暴检测：回合数 > 10
             if (turnCount > 10) {
-                addFloatingText("🔥 狂暴! (+1力量)", 50, 20, 'text-red-600 font-black text-3xl animate-pulse');
+                addFloatingText("🔥 狂暴!", 'PLAYER', undefined, undefined, 'text-red-600 font-black', 'large');
                 setEnemies(prev => prev.map(e => ({...e, statuses: applyStatus(e.statuses, StatusType.STRENGTH, 1)})));
                 await new Promise(r => setTimeout(r, 800));
             }
@@ -415,13 +430,12 @@ export const useGame = () => {
                     if (take > 0) {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
-                        addFloatingText(`-${take}`, 20, 50, 'text-red-600 font-black text-3xl');
+                        addFloatingText(`-${take}`, 'PLAYER', undefined, undefined, 'text-red-600 font-black', 'large');
+                        triggerVFX('SLASH', window.innerWidth * 0.15, window.innerHeight * 0.6, undefined, undefined, CardTheme.DARK);
                     }
                 } else if (enemy.intent === IntentType.BUFF) {
                     setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, block: e.block + 10} : e));
                 } else if (enemy.intent === IntentType.SUMMON) {
-                    // 召唤逻辑
-                    // 限制场上最多4个敌人
                     if (enemies.filter(e => e.currentHp > 0).length < 4) {
                          const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
                          const t = minionTemplates[Math.floor(Math.random() * minionTemplates.length)];
@@ -435,13 +449,12 @@ export const useGame = () => {
                             intent: IntentType.ATTACK, intentValue: Math.floor(level * 0.8) + 3, isBoss: false
                         };
                         setEnemies(prev => [...prev, newMinion]);
-                        triggerVFX('BUFF', 80, 50, undefined, undefined, CardTheme.DARK);
-                        addFloatingText("援军!", 80, 30, 'text-purple-500');
+                        triggerVFX('EXPLOSION', 800, 400, undefined, undefined, CardTheme.DARK); // Approx
+                        addFloatingText("援军!", enemy.id, undefined, undefined, 'text-purple-500', 'medium');
                     } else {
-                        addFloatingText("召唤失败", 80, 30, 'text-gray-400');
+                        addFloatingText("召唤失败", enemy.id, undefined, undefined, 'text-gray-400', 'small');
                     }
                 } else if (enemy.intent === IntentType.SPECIAL) {
-                    // 必杀重击
                     const dmg = calculateDamage(Math.floor(enemy.intentValue * 1.5), enemy, 'PLAYER');
                      let take = dmg;
                      if (player.block >= take) {
@@ -454,7 +467,8 @@ export const useGame = () => {
                     if (take > 0) {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
-                        addFloatingText(`💥 ${take}`, 20, 50, 'text-red-800 font-black text-5xl');
+                        addFloatingText(`💥 ${take}`, 'PLAYER', undefined, undefined, 'text-red-800 font-black', 'large');
+                        triggerVFX('EXPLOSION', window.innerWidth * 0.15, window.innerHeight * 0.6, undefined, undefined, CardTheme.FIRE);
                     }
                 }
 
@@ -474,14 +488,13 @@ export const useGame = () => {
                     } else if (rand < 0.7) {
                         nextType = IntentType.BUFF;
                     } else if (rand < 0.85) {
-                        nextType = IntentType.SPECIAL; // 重击
+                        nextType = IntentType.SPECIAL;
                         nextVal = 10 + Math.floor(level * 2);
                     } else {
                         nextType = IntentType.ATTACK;
                         nextVal = 6 + Math.floor(level * 1.5);
                     }
                 } else {
-                    // 小兵 AI
                      nextType = Math.random() > 0.6 ? IntentType.BUFF : IntentType.ATTACK;
                      nextVal = nextType === IntentType.ATTACK ? 3 + Math.floor(level * 0.8) : 0;
                 }
@@ -496,7 +509,6 @@ export const useGame = () => {
     }
   }, [phase]);
 
-  // Win/Loss Check
   useEffect(() => {
       if (enemies.length > 0 && enemies.every(e => e.currentHp <= 0) && phase !== 'REWARD' && phase !== 'LOADING') {
           setTimeout(() => {
@@ -515,13 +527,13 @@ export const useGame = () => {
 
   return {
       phase, setPhase, level, setLevel,
-      turnCount, // Exposed
+      turnCount, 
       player, setPlayer,
       deck, setDeck,
       hand, drawPile, discardPile,
-      enemies, floatingTexts, vfxEvents, shakingTargets,
+      enemies, floatingTexts, vfxEvents, shakingTargets, flashTargets,
       rewards,
       startLevel, playCard, playCardBatch, useSkill, endTurn,
-      calculateDamage // exposed for UI preview
+      calculateDamage
   };
 };

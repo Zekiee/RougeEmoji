@@ -1,23 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
-import { Enemy, IntentType, Status, StatusType } from '../types';
+import { Enemy, IntentType, Status, StatusType, FloatingText } from '../types';
 
 interface EnemyProps {
   enemy: Enemy;
   isShake: boolean;
-  isSelected?: boolean; // 是否处于“选中目标”模式下的高亮
-  isTargetable?: boolean; // 是否可以被选中
+  isFlash: boolean; // New: White flash on hit
+  isSelected?: boolean; 
+  isTargetable?: boolean;
+  floatingTexts?: FloatingText[]; // New: Texts specific to this enemy
   onClick?: (id: string) => void;
 }
 
-const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isSelected, isTargetable, onClick }) => {
+const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelected, isTargetable, floatingTexts = [], onClick }) => {
   
   const isDead = enemy.currentHp <= 0;
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
       if (isDead) {
-          // Wait for death pop animation (approx 0.6s) then collapse layout
           const timer = setTimeout(() => setIsCollapsed(true), 600);
           return () => clearTimeout(timer);
       } else {
@@ -56,31 +57,46 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isSelected, isTa
 
   return (
     <div 
-        data-enemy-id={enemy.id} // 关键：用于拖拽释放时的检测
+        data-enemy-id={enemy.id} 
         className={`
             relative flex flex-col items-center transition-all duration-500 ease-in-out select-none
             ${(isTargetable && !isDead) ? 'cursor-pointer' : ''}
-            ${isSelected ? 'scale-105 z-10' : ''}
+            ${isSelected ? 'scale-110 z-20' : ''}
             ${isDead ? 'pointer-events-none' : ''}
             ${isCollapsed ? 'w-0 -ml-4 md:-ml-8 opacity-0' : 'w-24 md:w-32 opacity-100'}
         `}
         onClick={() => isTargetable && !isDead && onClick && onClick(enemy.id)}
     >
-      {/* Soul Effect (Only when dead) - Absolute positioned, so it escapes the width collapse visually if overflow is visible */}
+      {/* Floating Texts Layer - Anchored to top of enemy */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 overflow-visible z-50 pointer-events-none">
+          {floatingTexts.map(ft => (
+              <div key={ft.id} 
+                   className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black flex justify-center w-40 -ml-20 text-center
+                   ${ft.size === 'large' ? 'text-5xl z-50' : 'text-3xl z-40'}`}
+              >
+                  {ft.text}
+              </div>
+          ))}
+      </div>
+
       {isDead && (
           <div className="absolute top-1/2 left-1/2 text-6xl z-50 animate-soul-rise">👻</div>
       )}
 
-      {/* Main Body Wrapper */}
       <div className={`flex flex-col items-center w-full ${isDead ? 'animate-death-pop' : ''}`}>
         
           {/* Target Selection Highlight */}
-          {(isTargetable && !isDead) && (
-              <div className="absolute -inset-4 bg-red-500/5 rounded-[40%] animate-pulse pointer-events-none border-2 border-red-400/50 border-dashed scale-110 z-0"></div>
+          {(isTargetable && !isDead && isSelected) && (
+              <div className="absolute -inset-6 bg-gradient-to-t from-red-500/20 to-transparent rounded-[40%] animate-pulse pointer-events-none border-b-4 border-red-500 z-0 scale-125"></div>
+          )}
+          
+          {/* Target Hint Ring */}
+          {(isTargetable && !isDead && !isSelected) && (
+               <div className="absolute -inset-2 border-2 border-red-400/30 border-dashed rounded-full animate-spin-slow pointer-events-none opacity-50"></div>
           )}
 
           {/* Intent Bubble */}
-          <div className="mb-2 md:mb-3 bg-white/90 backdrop-blur-sm border-2 border-slate-100 px-2 py-1 md:px-3 md:py-1.5 rounded-2xl shadow-lg flex items-center gap-2 animate-float z-20 min-w-[50px] md:min-w-[60px] justify-center pointer-events-none">
+          <div className="mb-2 md:mb-3 bg-white/90 backdrop-blur-sm border-2 border-slate-100 px-2 py-1 md:px-3 md:py-1.5 rounded-2xl shadow-lg flex items-center gap-2 animate-float z-20 min-w-[50px] md:min-w-[60px] justify-center pointer-events-none transform hover:scale-125 transition-transform">
             <span className={`text-lg md:text-xl leading-none ${getIntentColor()}`}>{getIntentIcon()}</span>
             {enemy.intentValue > 0 && (
                 <span className={`font-black text-base md:text-lg leading-none ${getIntentColor()}`}>{enemy.intentValue}</span>
@@ -101,8 +117,9 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isSelected, isTa
                 flex items-center justify-center text-7xl md:text-8xl 
                 filter drop-shadow-xl transition-transform duration-100 relative z-10
                 ${isShake ? 'animate-shake' : 'animate-float'}
-                ${enemy.isBoss ? 'text-[8rem] md:text-[10rem]' : ''} 
-                ${(isTargetable && !isDead) ? 'group-hover:scale-110 transition-transform' : ''}
+                ${isFlash ? 'animate-hit-flash' : ''}
+                ${enemy.isBoss ? 'text-[9rem] md:text-[11rem]' : ''} 
+                ${(isTargetable && !isDead && isSelected) ? 'scale-110' : ''}
               `}>
                 {enemy.emoji}
               </div>
@@ -125,13 +142,12 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isSelected, isTa
           <div className="w-20 md:w-28 relative pointer-events-none group">
             <div className="h-3 md:h-4 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner border-2 border-white ring-1 ring-black/10">
               <div 
-                className="h-full bg-rose-500 transition-all duration-500 ease-out relative"
+                className="h-full bg-rose-500 transition-all duration-300 ease-out relative"
                 style={{ width: `${Math.max(0, (enemy.currentHp / enemy.maxHp) * 100)}%` }}
               >
                   <div className="absolute inset-0 bg-white/20 w-full h-1/2 top-0"></div>
               </div>
             </div>
-            {/* HP Text Overlay */}
             <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-[8px] md:text-[9px] font-black text-white drop-shadow-md tracking-wider">{enemy.currentHp}/{enemy.maxHp}</span>
             </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardType, TargetType, CardTheme } from '../types';
 
@@ -75,10 +76,10 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
         transition-all duration-200 transform select-none
         flex flex-col overflow-hidden animate-draw-card origin-bottom
         ${getThemeStyle(card.theme)}
-        ${selected ? 'ring-4 ring-yellow-400 -translate-y-8 scale-110 z-50' : ''}
-        ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-4 scale-105' : ''}
-        ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50' : ''}
-        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-8 md:hover:-translate-y-12 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
+        ${selected ? 'ring-4 ring-yellow-400 -translate-y-4 scale-110 z-50' : ''}
+        ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-2 scale-105' : ''}
+        ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50 opacity-50' : ''}
+        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-4 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
         ${disabled && !selected ? 'opacity-80 grayscale cursor-not-allowed brightness-90' : ''}
       `}
     >
@@ -114,7 +115,7 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
         <p className="text-[10px] md:text-sm text-slate-600 font-bold leading-tight scale-95 origin-top">{card.description}</p>
       </div>
       
-      {/* Hand Passive Indicator (New) */}
+      {/* Hand Passive Indicator */}
       {card.handPassive && (
           <div className="absolute bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-[9px] md:text-[10px] font-bold text-center py-0.5 border-t border-yellow-200 z-10">
               ✋ 保留有益

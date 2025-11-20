@@ -23,7 +23,6 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
         setDragState(newState);
     };
 
-    // Transform Screen Coordinates (clientX/Y) to Game Coordinates (0-1600, 0-900)
     const getGameXY = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
         let clientX = 0;
         let clientY = 0;
@@ -39,11 +38,9 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
             clientY = (e as React.MouseEvent).clientY;
         }
 
-        // Center of the screen
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
 
-        // Vector from center
         const dx = clientX - centerX;
         const dy = clientY - centerY;
 
@@ -51,23 +48,6 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
         let gameY = 0;
 
         if (isPortrait) {
-            // If rotated 90deg clockwise:
-            // Screen X+ maps to Game Y+
-            // Screen Y+ maps to Game X- (inverted)
-            // Need to reverse the rotation logic carefully based on CSS rotate(90deg)
-            
-            // Visual: Top of Phone (Screen Y=0) is Left of Game (Game X=0)
-            // Visual: Right of Phone (Screen X=Max) is Top of Game (Game Y=0) -> Wait, CSS rotate(90)
-            
-            // CSS rotate(90deg) turns the element clockwise.
-            // Screen Top (Y=0) -> aligns with Game Left
-            // Screen Right (X=Max) -> aligns with Game Top
-            
-            // Let's use un-rotated vector logic
-            // Rotate vector -90deg to map back to local space
-            // x' = x*cos(-90) - y*sin(-90) = y
-            // y' = x*sin(-90) + y*cos(-90) = -x
-            
             gameX = dy / scale;
             gameY = -dx / scale;
         } else {
@@ -75,7 +55,6 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
             gameY = dy / scale;
         }
 
-        // Add offset to return to 0-1600 coordinate space (from center-relative)
         return { 
             x: gameX + DESIGN_WIDTH / 2, 
             y: gameY + DESIGN_HEIGHT / 2 
@@ -88,18 +67,32 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
             if (ds.isDragging) {
                 if (e.cancelable) e.preventDefault();
                 const { x, y } = getGameXY(e);
-                updateDragState({ ...ds, currentX: x, currentY: y });
+                
+                // Hit detection logic inside move for highlighting
+                let hoveringTarget = undefined;
+                if (ds.needsTarget) {
+                     let clientX = 0, clientY = 0;
+                    if('changedTouches' in e && e.changedTouches.length > 0) {
+                        clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
+                    } else if ('clientX' in e) {
+                        clientX = (e as MouseEvent).clientX; clientY = (e as MouseEvent).clientY;
+                    }
+                    const elements = document.elementsFromPoint(clientX, clientY);
+                    const enemyElement = elements.find(el => el.hasAttribute('data-enemy-id'));
+                    const targetId = enemyElement?.getAttribute('data-enemy-id');
+                    if (targetId) hoveringTarget = targetId;
+                }
+
+                updateDragState({ ...ds, currentX: x, currentY: y, isHoveringTarget: hoveringTarget });
             }
         };
 
         const handleDrop = (e: MouseEvent | TouchEvent) => {
             const ds = dragStateRef.current;
             const currentGame = gameRef.current;
-            const { x, y } = getGameXY(e); // Get Game Coordinates
+            const { x, y } = getGameXY(e); 
             const { needsTarget, itemId, dragType, groupTag } = ds;
             
-            // Hit Test using Document (Screen Coordinates) for Element detection
-            // We still use document.elementsFromPoint with raw client coordinates to find the DIV
             let clientX = 0, clientY = 0;
             if('changedTouches' in e && e.changedTouches.length > 0) {
                 clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
@@ -126,9 +119,9 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
                     }
                 }
             } else {
-                // Drop zone logic (Upper area of the screen)
-                // In Game Coordinates: Y < 600 (approx 2/3 up)
-                if (y < 600 && itemId) {
+                // Drop zone logic
+                // In 720p, Y < 480 (approx 2/3 height) is safe for play area
+                if (y < 480 && itemId) {
                      if (dragType === 'CARD') {
                          const card = currentGame.hand.find((c: Card) => c.id === itemId);
                          if (card) currentGame.playCard(card, undefined, ds.startX, ds.startY);
@@ -137,7 +130,7 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
                      }
                 }
             }
-            updateDragState({ isDragging: false, itemId: null, startX: 0, startY: 0, currentX: 0, currentY: 0, dragType: 'CARD', needsTarget: false });
+            updateDragState({ isDragging: false, itemId: null, startX: 0, startY: 0, currentX: 0, currentY: 0, dragType: 'CARD', needsTarget: false, isHoveringTarget: undefined });
         };
 
         const handleEnd = (e: MouseEvent | TouchEvent) => {
@@ -160,14 +153,14 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
             window.removeEventListener('touchend', handleEnd);
             window.removeEventListener('touchcancel', handleEnd);
         };
-    }, [scale, isPortrait]); // Re-bind if scale/orientation changes to ensure math is correct
+    }, [scale, isPortrait]); 
 
     const startDragCard = (e: React.MouseEvent | React.TouchEvent, card: Card) => {
         if (gameRef.current.phase !== 'PLAYER_TURN' || gameRef.current.player.currentEnergy < card.cost) return;
         
         const { x, y } = getGameXY(e);
         const needsTarget = card.effects.some(ef => ef.target === TargetType.SINGLE_ENEMY);
-        const offsetY = -100; // Visual lift in Game Units
+        const offsetY = -60; // Reduced visual lift in Game Units (720p)
         
         updateDragState({
             isDragging: true, itemId: card.id,
@@ -184,7 +177,7 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
 
         const { x, y } = getGameXY(e);
         const needsTarget = skill.effects?.some(ef => ef.target === TargetType.SINGLE_ENEMY) || false;
-        const offsetY = -100;
+        const offsetY = -60;
 
         updateDragState({
             isDragging: true, itemId: skill.id,

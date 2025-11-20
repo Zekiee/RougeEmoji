@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
 
-export const DESIGN_WIDTH = 1600;
-export const DESIGN_HEIGHT = 900;
+// 修改为 720P 分辨率，这样在手机和电脑上元素都会显得更大
+export const DESIGN_WIDTH = 1280;
+export const DESIGN_HEIGHT = 720;
 
 export const useWindowScale = () => {
     const [containerStyle, setContainerStyle] = useState<React.CSSProperties>({});
@@ -19,11 +20,10 @@ export const useWindowScale = () => {
             setIsPortrait(isVert);
             
             // Target dimension matching
-            // If portrait, we map Screen Height -> Game Width, Screen Width -> Game Height
             const availableWidth = isVert ? h : w;
             const availableHeight = isVert ? w : h;
             
-            // Calculate scale to CONTAIN the 1600x900 box within the screen
+            // Calculate scale to CONTAIN the 1280x720 box within the screen
             const scaleX = availableWidth / DESIGN_WIDTH;
             const scaleY = availableHeight / DESIGN_HEIGHT;
             const finalScale = Math.min(scaleX, scaleY);

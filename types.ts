@@ -193,15 +193,17 @@ export interface Player {
 export interface FloatingText {
   id: number;
   text: string;
-  x: number;
-  y: number;
+  x?: number; // Deprecated for combat text
+  y?: number; // Deprecated for combat text
+  targetId?: string; // New: Attach to specific entity
   color: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
 // --- VFX ---
 export interface VFXEvent {
   id: string;
-  type: 'PROJECTILE' | 'IMPACT' | 'SHAKE' | 'BUFF';
+  type: 'PROJECTILE' | 'IMPACT' | 'SHAKE' | 'BUFF' | 'SLASH' | 'EXPLOSION';
   startX?: number;
   startY?: number;
   endX?: number;
@@ -225,4 +227,5 @@ export interface DragState {
     groupTag?: string;
     theme?: CardTheme;
     sourceItem?: Card | Skill;
+    isHoveringTarget?: boolean; // New: UI feedback
 }
