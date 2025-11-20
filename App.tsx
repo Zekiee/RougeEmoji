@@ -42,13 +42,14 @@ const enterFullScreen = () => {
     if (requestFull) {
         requestFull.call(docEl).catch((e: any) => console.log("Fullscreen blocked", e));
     }
-    // Attempt orientation lock
-    if (screen.orientation && (screen.orientation as any).lock) {
-        (screen.orientation as any).lock('landscape').catch(() => {});
+    // Attempt orientation lock safely
+    const screen = window.screen as any;
+    if (screen && screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
     }
 };
 
-const App: React.FC = () => {
+export const App = () => {
   const game = useGame();
   const isPortrait = useOrientation();
   
@@ -63,7 +64,7 @@ const App: React.FC = () => {
 
   const [maxLevelReached, setMaxLevelReached] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
-  const [gameScale, setGameScale] = useState(1);
+  const [globalScale, setGlobalScale] = useState(1);
   
   // UI 状态 (Synced with ref for rendering)
   const [dragState, setDragState] = useState<DragState>(dragStateRef.current);
@@ -74,26 +75,36 @@ const App: React.FC = () => {
       setDragState(newState);
   };
 
-  // --- 屏幕适配计算 ---
+  // --- 全局屏幕适配计算 ---
   useEffect(() => {
       const handleResize = () => {
           const w = window.innerWidth;
           const h = window.innerHeight;
           
-          // 仅针对移动端/小屏设备进行缩放优化
-          if (w < 768) {
-              // 设计基准：宽 390 (iPhone 12/13/14), 高 800 (安全区域内高度)
-              // 对于 667x375 这种小屏，我们需要缩小 UI 以便放下所有元素
-              const heightRatio = h / 800;
-              const widthRatio = w / 390;
-              
-              // 取较小值作为缩放基准，确保内容都在屏幕内
-              // 限制最小缩放为 0.65，避免文字过小
-              const scale = Math.min(heightRatio, widthRatio, 1);
-              setGameScale(Math.max(0.65, scale));
-          } else {
-              setGameScale(1);
-          }
+          if (w === 0 || h === 0) return;
+
+          // 设定最小安全设计分辨率 (Landscape)
+          // 800px 宽保证手牌能排开
+          // 420px 高保证 顶部HUD(60) + 敌人(200) + 手牌(160) 不重叠
+          const SAFE_WIDTH = 800;
+          const SAFE_HEIGHT = 420; 
+          
+          const scaleX = w / SAFE_WIDTH;
+          const scaleY = h / SAFE_HEIGHT;
+          
+          // 取最小值，确保内容全部可见
+          let newScale = Math.min(scaleX, scaleY);
+
+          // Safety check
+          if (!Number.isFinite(newScale) || newScale <= 0) newScale = 1;
+
+          // 桌面端优化：如果屏幕很大，不要让 UI 变得无限大，限制最大缩放
+          if (newScale > 1.2) newScale = 1.2;
+          
+          // Ensure minimum scale to be visible
+          if (newScale < 0.3) newScale = 0.3;
+
+          setGlobalScale(newScale);
       };
       
       window.addEventListener('resize', handleResize);
@@ -118,11 +129,16 @@ const App: React.FC = () => {
   // --- 输入事件 ---
   
   // 统一获取坐标的辅助函数
-  const getEventXY = (e: MouseEvent | TouchEvent) => {
-      if ('touches' in e) {
+  const getEventXY = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
+      if ('touches' in e && e.touches.length > 0) {
           return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      } else if ('changedTouches' in e && e.changedTouches.length > 0) {
+          // Fallback for touchend
+          return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      } else if ('clientX' in e) {
+          return { x: e.clientX, y: e.clientY };
       }
-      return { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
+      return { x: 0, y: 0 };
   };
 
   useEffect(() => {
@@ -139,33 +155,17 @@ const App: React.FC = () => {
         }
     };
 
-    const handleEnd = (e: MouseEvent | TouchEvent) => {
-        const ds = dragStateRef.current;
-        if (ds.isDragging) {
-            handleDrop(e);
-        }
-    };
-
+    // Move handleDrop definition BEFORE handleEnd to ensure initialization order is strictly correct
     const handleDrop = (e: MouseEvent | TouchEvent) => {
         const ds = dragStateRef.current;
         const currentGame = gameRef.current;
 
-        // 获取最终松手时的坐标 (TouchEnd 没有 touches，只有 changedTouches)
-        let clientX = ds.currentX;
-        let clientY = ds.currentY;
-        
-        if ('changedTouches' in e) {
-            // 如果是触摸结束，尽量使用 changedTouches
-            if (e.changedTouches.length > 0) {
-                clientX = e.changedTouches[0].clientX;
-                clientY = e.changedTouches[0].clientY;
-            }
-        } else {
-            clientX = (e as MouseEvent).clientX;
-            clientY = (e as MouseEvent).clientY;
-        }
+        // 获取最终松手时的坐标
+        const { x: clientX, y: clientY } = getEventXY(e);
 
         const { needsTarget, itemId, dragType, groupTag } = ds;
+        
+        // 使用 elementsFromPoint 获取目标，这使用的是屏幕坐标，无论是否缩放都有效
         const elements = document.elementsFromPoint(clientX, clientY);
         const enemyElement = elements.find(el => el.hasAttribute('data-enemy-id'));
         const targetId = enemyElement?.getAttribute('data-enemy-id');
@@ -198,6 +198,13 @@ const App: React.FC = () => {
         updateDragState({ isDragging: false, itemId: null, startX: 0, startY: 0, currentX: 0, currentY: 0, dragType: 'CARD', needsTarget: false });
     };
 
+    const handleEnd = (e: MouseEvent | TouchEvent) => {
+        const ds = dragStateRef.current;
+        if (ds.isDragging) {
+            handleDrop(e);
+        }
+    };
+
     window.addEventListener('mousemove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchmove', handleMove, { passive: false }); // passive: false required to preventDefault
@@ -216,10 +223,7 @@ const App: React.FC = () => {
   const startDragCard = (e: React.MouseEvent | React.TouchEvent, card: Card) => {
       if (game.phase !== 'PLAYER_TURN' || game.player.currentEnergy < card.cost) return;
       
-      // Prevent default touch actions (scroll)
-      // if ('touches' in e && e.cancelable) e.preventDefault(); 
-
-      const { x, y } = getEventXY(e as any);
+      const { x, y } = getEventXY(e);
       const needsTarget = card.effects.some(ef => ef.target === TargetType.SINGLE_ENEMY);
       const offsetY = ('touches' in e) ? -60 : 0;
       
@@ -236,7 +240,7 @@ const App: React.FC = () => {
           (skill.cost && game.player.currentEnergy < skill.cost) || 
           (skill.currentCooldown || 0) > 0) return;
 
-      const { x, y } = getEventXY(e as any);
+      const { x, y } = getEventXY(e);
       const needsTarget = skill.effects?.some(ef => ef.target === TargetType.SINGLE_ENEMY) || false;
       const offsetY = ('touches' in e) ? -60 : 0;
 
@@ -251,6 +255,7 @@ const App: React.FC = () => {
   // --- 渲染辅助 ---
   const renderArrow = () => {
       if (!dragState.isDragging || !dragState.needsTarget) return null;
+      // Arrow coordinates are in Screen Space (fixed overlay)
       const { startX, startY, currentX, currentY } = dragState;
       const controlX = startX; const controlY = currentY;
       const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${currentX} ${currentY}`;
@@ -260,7 +265,7 @@ const App: React.FC = () => {
       if (dragState.theme === CardTheme.POISON) color = "rgb(168, 85, 247)";
 
       return (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible">
+          <svg className="fixed inset-0 w-full h-full pointer-events-none z-[9999] overflow-visible">
               <defs>
                   <filter id="glow">
                       <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -278,14 +283,14 @@ const App: React.FC = () => {
 
   const renderGhost = () => {
       if (!dragState.isDragging || dragState.needsTarget) return null;
-      // Ghost also needs to respect the scale visually, or it looks huge on small screens
+      // Ghost rendered in Screen Space
       return (
           <div 
-            className="fixed pointer-events-none z-50 opacity-60 transform -translate-x-1/2 -translate-y-1/2" 
+            className="fixed pointer-events-none z-[9999] opacity-60 transform -translate-x-1/2 -translate-y-1/2" 
             style={{ 
                 left: dragState.currentX, 
                 top: dragState.currentY,
-                transform: `translate(-50%, -50%) scale(${1.25 * gameScale})` 
+                transform: `translate(-50%, -50%) scale(${1.25 * globalScale})` // Apply global scale to ghost too
             }}
           >
               <div className="text-7xl filter drop-shadow-2xl animate-pulse">{dragState.sourceItem?.emoji || '🃏'}</div>
@@ -363,40 +368,42 @@ const App: React.FC = () => {
   // --- 屏幕渲染 ---
 
   const renderStart = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-amber-50 relative overflow-hidden p-4 text-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
+    <div className="flex flex-col items-center justify-center h-full bg-amber-50 relative overflow-hidden p-4 text-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 pointer-events-none"></div>
       
-      {/* Settings Button */}
-      <button 
-          onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/50 hover:bg-white rounded-full backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:rotate-45 z-20 group"
-      >
-          <span className="text-2xl md:text-3xl opacity-70 group-hover:opacity-100">⚙️</span>
-      </button>
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Settings Button */}
+        <button 
+            onClick={() => setShowSettings(true)}
+            className="absolute -top-16 -right-4 md:-top-20 md:-right-12 p-3 bg-white/50 hover:bg-white rounded-full backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:rotate-45 group"
+        >
+            <span className="text-2xl md:text-3xl opacity-70 group-hover:opacity-100">⚙️</span>
+        </button>
 
-      <h1 className="text-5xl md:text-7xl font-black text-rose-500 mb-4 md:mb-8 animate-pop drop-shadow-lg tracking-tighter">表情包大乱斗</h1>
-      <div className="text-7xl md:text-9xl mb-8 md:mb-12 animate-float drop-shadow-2xl">🏰</div>
-      <button onClick={() => {
-          enterFullScreen();
-          game.setPhase('CHARACTER_SELECT');
-      }} className="group relative px-12 py-4 md:px-16 md:py-6 bg-rose-500 text-white text-xl md:text-3xl font-black rounded-full shadow-[0_6px_0_rgb(190,18,60)] md:shadow-[0_10px_0_rgb(190,18,60)] hover:shadow-[0_4px_0_rgb(190,18,60)] hover:translate-y-1 active:shadow-none active:translate-y-3 transition-all">
-        <span className="relative z-10">开始冒险</span>
-        <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-      </button>
+        <h1 className="text-5xl md:text-7xl font-black text-rose-500 mb-4 md:mb-8 animate-pop drop-shadow-lg tracking-tighter">表情包大乱斗</h1>
+        <div className="text-7xl md:text-9xl mb-8 md:mb-12 animate-float drop-shadow-2xl">🏰</div>
+        <button onClick={() => {
+            enterFullScreen();
+            game.setPhase('CHARACTER_SELECT');
+        }} className="group relative px-12 py-4 md:px-16 md:py-6 bg-rose-500 text-white text-xl md:text-3xl font-black rounded-full shadow-[0_6px_0_rgb(190,18,60)] md:shadow-[0_10px_0_rgb(190,18,60)] hover:shadow-[0_4px_0_rgb(190,18,60)] hover:translate-y-1 active:shadow-none active:translate-y-3 transition-all">
+            <span className="relative z-10">开始冒险</span>
+            <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        </button>
+      </div>
 
       {renderSettings()}
     </div>
   );
 
   const renderLoading = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-amber-50 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="flex flex-col items-center justify-center h-full bg-amber-50 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="text-9xl mb-8 animate-spin filter drop-shadow-xl">⏳</div>
       <h2 className="text-3xl md:text-4xl font-black text-slate-700 animate-pulse">生成地下城...</h2>
     </div>
   );
 
   const renderCharSelect = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-slate-100 p-4 md:p-8 relative overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="flex flex-col items-center justify-center h-full bg-slate-100 p-4 md:p-8 relative overflow-y-auto pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute inset-0 bg-grid-slate-200/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] fixed"></div>
       <button onClick={() => game.setPhase('START_SCREEN')} className="absolute top-4 left-4 z-30 text-slate-500 font-bold hover:text-slate-800 transition-colors bg-white/50 px-4 py-2 rounded-full">← 返回</button>
       <h2 className="text-3xl md:text-5xl font-black text-slate-800 mb-8 md:mb-12 z-10 mt-8 md:mt-0">选择你的英雄</h2>
@@ -489,32 +496,16 @@ const App: React.FC = () => {
   );
 
   const renderGame = () => (
-    <div className="relative w-full h-screen bg-amber-50 overflow-hidden flex flex-col select-none font-sans touch-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="relative w-full h-full bg-amber-50 overflow-hidden flex flex-col select-none font-sans touch-none pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] opacity-40 pointer-events-none"></div>
       
-      {/* Fullscreen Toggle Button - Outside scaling to stay accessible */}
+      {/* Fullscreen Toggle Button */}
       <div className="absolute top-2 left-2 md:top-4 md:left-4 z-50 opacity-50 hover:opacity-100 transition-opacity">
           <button onClick={enterFullScreen} className="bg-black/20 p-2 rounded-lg text-white text-lg">⛶</button>
       </div>
 
-      {renderArrow()}
-      {renderGhost()}
-
-      {/* 
-        GLOBAL GAME SCALER 
-        This container applies a CSS transform to everything inside (HUD, Battle, Hand).
-        It ensures that on small screens (e.g. 375x667), the UI shrinks to fit rather than overflowing.
-        The width/height compensation (100 / scale) ensures the container still fills the screen visually after shrinking.
-      */}
-      <div 
-        style={{ 
-            transform: `scale(${gameScale})`, 
-            transformOrigin: 'top center',
-            width: `${100 / gameScale}%`,
-            height: `${100 / gameScale}%`
-        }}
-        className="relative flex flex-col w-full h-full"
-      >
+      {/* Main Battlefield Stage */}
+      <div className="relative flex flex-col w-full h-full">
           <VFXLayer events={game.vfxEvents} />
           {game.phase === 'REWARD' && renderReward()}
           {game.phase === 'GAME_OVER' && (
@@ -535,7 +526,7 @@ const App: React.FC = () => {
                       <span className="text-xl md:text-2xl font-black text-slate-700 leading-none">{game.level}</span>
                   </div>
 
-                  {/* Turn Count (New) */}
+                  {/* Turn Count */}
                   <div className="flex flex-col items-center">
                       <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest ${game.turnCount >= 9 ? 'text-red-500' : 'text-slate-400'}`}>Turn</span>
                       <span className={`text-xl md:text-2xl font-black leading-none ${game.turnCount >= 9 ? 'text-red-600 animate-pulse' : 'text-slate-700'}`}>{game.turnCount}</span>
@@ -680,9 +671,11 @@ const App: React.FC = () => {
                           
                           // Dynamic spacing based on card count to fit screen
                           // Max width container / count, clamped
-                          const screenWidth = window.innerWidth;
-                          const maxSpacing = screenWidth < 768 ? 45 : 70; // Tighter spacing
-                          const xSpacing = Math.min(maxSpacing, (screenWidth * 0.8) / total);
+                          // NOTE: Here we use a fixed maxSpacing because the global scaler ensures there is always space!
+                          const maxSpacing = 70;
+                          // But if hand is HUGE, we still squeeze
+                          // We are in a scaled container of width ~800px.
+                          const xSpacing = Math.min(maxSpacing, (800 * 0.8) / total);
 
                           return (
                             <div key={card.id} className="origin-bottom transition-all duration-300 absolute bottom-0"
@@ -714,24 +707,42 @@ const App: React.FC = () => {
               </div>
           </div>
       </div>
-      
-      {/* Portrait Warning Overlay */}
-      {isPortrait && (
-          <div className="fixed inset-0 bg-slate-900/95 z-[100] flex flex-col items-center justify-center text-white p-8 animate-pop">
-              <div className="text-8xl mb-8 animate-bounce">📱</div>
-              <h2 className="text-3xl font-black mb-4 text-center">请横屏游戏</h2>
-              <p className="text-slate-400 text-center">为了最佳体验，请旋转您的手机</p>
-              <div className="mt-12 w-16 h-24 border-4 border-white rounded-xl animate-spin"></div>
-          </div>
-      )}
-    </div>
+      </div>
   );
 
-  if (game.phase === 'START_SCREEN') return renderStart();
-  if (game.phase === 'CHARACTER_SELECT') return renderCharSelect();
-  if (game.phase === 'LOADING') return renderLoading();
+  // --- 主容器 ---
+  return (
+      <div className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center select-none">
+          {/* Global Scaled Stage */}
+          <div 
+              style={{ 
+                  width: `${window.innerWidth / globalScale}px`, 
+                  height: `${window.innerHeight / globalScale}px`, 
+                  transform: `scale(${globalScale})`,
+                  transformOrigin: 'center center'
+              }}
+              className="relative shadow-2xl overflow-hidden bg-amber-50"
+          >
+              {/* Render Current Phase Content */}
+              {game.phase === 'START_SCREEN' && renderStart()}
+              {game.phase === 'CHARACTER_SELECT' && renderCharSelect()}
+              {game.phase === 'LOADING' && renderLoading()}
+              {(game.phase === 'PLAYER_TURN' || game.phase === 'ENEMY_TURN' || game.phase === 'REWARD' || game.phase === 'GAME_OVER') && renderGame()}
+          </div>
 
-  return renderGame();
+          {/* Global Overlays (Outside Scaler for crisp text/icons if needed, but Ghost/Arrow logic is cleaner inside or handled via screen coords. Here Arrow/Ghost use screen coords) */}
+          {renderArrow()}
+          {renderGhost()}
+          
+          {/* Portrait Warning Overlay (Always Full Screen) */}
+          {isPortrait && (
+              <div className="fixed inset-0 bg-slate-900/95 z-[9999] flex flex-col items-center justify-center text-white p-8 animate-pop">
+                  <div className="text-8xl mb-8 animate-bounce">📱</div>
+                  <h2 className="text-3xl font-black mb-4 text-center">请横屏游戏</h2>
+                  <p className="text-slate-400 text-center">为了最佳体验，请旋转您的手机</p>
+                  <div className="mt-12 w-16 h-24 border-4 border-white rounded-xl animate-spin"></div>
+              </div>
+          )}
+      </div>
+  );
 };
-
-export default App;

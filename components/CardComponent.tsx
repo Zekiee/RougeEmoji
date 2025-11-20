@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardType, TargetType, CardTheme } from '../types';
 
@@ -120,16 +121,6 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
               ✋ 保留有益
           </div>
       )}
-
-      <style>{`
-        @keyframes draw-card-anim {
-            0% { transform: translate(-50px, 100px) rotate(-20deg); opacity: 0; }
-            100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-        }
-        .animate-draw-card {
-            animation: draw-card-anim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
-        }
-      `}</style>
     </div>
   );
 };

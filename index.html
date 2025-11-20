@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -10,6 +10,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
       body {
         font-family: 'Nunito', "Microsoft YaHei", sans-serif;
         background-color: #FFFBEB; /* Amber-50 */
@@ -87,14 +93,24 @@
         100% { transform: translate(-50%, -100px) scale(1.5); opacity: 0; }
       }
 
+      /* Card Draw Animation - Moved from CardComponent */
+      @keyframes draw-card-anim {
+          0% { transform: translate(-50px, 100px) rotate(-20deg); opacity: 0; }
+          100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+      }
+
       .animate-float { animation: float 3s ease-in-out infinite; }
       .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
-      .animate-pop { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .animate-pop { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
       .animate-shake { animation: shake 0.4s ease-in-out; }
       .animate-damage { animation: damage-float 1s ease-out forwards; }
       .animate-shadow { animation: shadow-breath 3s ease-in-out infinite; }
       .animate-death-pop { animation: death-pop 0.6s ease-in-out forwards; }
       .animate-soul-rise { animation: soul-rise 1.2s ease-out forwards; }
+      
+      .animate-draw-card {
+          animation: draw-card-anim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+      }
 
       /* 隐藏卡牌历史记录的滚动条 */
       ::-webkit-scrollbar { width: 0px; background: transparent; }
@@ -116,7 +132,9 @@
 <script type="importmap">
 {
   "imports": {
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/jsx-runtime": "https://aistudiocdn.com/react@^19.2.0/jsx-runtime",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0"
   }
