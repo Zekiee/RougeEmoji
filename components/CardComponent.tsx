@@ -80,7 +80,7 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
         ${selected ? 'ring-4 ring-yellow-400 -translate-y-2 scale-110 z-50' : ''}
         ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-2 scale-105' : ''}
         ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50 opacity-100' : ''}
-        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-2 hover:scale-105 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
+        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-4 hover:scale-105 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
         ${disabled && !selected ? 'opacity-80 grayscale cursor-not-allowed brightness-90' : ''}
       `}
     >

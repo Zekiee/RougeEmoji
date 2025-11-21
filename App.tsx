@@ -57,7 +57,7 @@ export const App = () => {
       if (dragState.needsTarget) {
           return {
               x: dragState.startX,
-              y: dragState.startY - 150 // Pop up and stay fixed above hand
+              y: Math.min(600, dragState.startY - 100) // Adjusted for bottom hand layout
           };
       }
       // Otherwise follow finger

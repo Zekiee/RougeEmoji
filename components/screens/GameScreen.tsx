@@ -27,7 +27,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
     const getTextsFor = (targetId: string) => game.floatingTexts.filter((ft: FloatingText) => ft.targetId === targetId);
 
     return (
-        <div className="absolute inset-0 w-full h-full bg-amber-50">
+        <div className="absolute inset-0 w-full h-full bg-amber-50 overflow-hidden select-none">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] opacity-40 pointer-events-none"></div>
           
           {/* Fullscreen Toggle */}
@@ -35,62 +35,48 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
               <button onClick={enterFullScreen} className="bg-black/20 p-2 rounded-lg text-white text-2xl">⛶</button>
           </div>
     
-          {/* --- Layer: HUD (Top) --- */}
-          <div className="absolute top-0 left-0 right-0 h-24 z-30 pointer-events-none flex justify-center pt-3">
-              <div className="bg-white/90 backdrop-blur-md px-6 py-1 rounded-full shadow-lg border-b-4 border-slate-200 flex items-center gap-6 pointer-events-auto transition-all h-16">
-                  {/* Level */}
-                  <div className="flex flex-col items-center w-14">
+          {/* --- TOP BAR (Global Stats Only) --- */}
+          <div className="absolute top-0 left-0 right-0 h-16 z-20 flex justify-center pt-2 pointer-events-none">
+              <div className="bg-white/90 backdrop-blur-md px-8 py-1 rounded-b-2xl shadow-lg border-b-2 border-slate-200 flex items-center gap-8 pointer-events-auto">
+                   {/* Level */}
+                   <div className="flex flex-col items-center">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Level</span>
                       <span className="text-2xl font-black text-slate-700 leading-none">{game.level}</span>
-                  </div>
+                   </div>
+                   
+                   <div className="w-px h-8 bg-slate-300"></div>
 
-                  {/* Turn Count */}
-                  <div className="flex flex-col items-center w-14">
+                   {/* Turn Count */}
+                   <div className="flex flex-col items-center">
                       <span className={`text-[10px] font-black uppercase tracking-widest ${game.turnCount >= 9 ? 'text-red-500' : 'text-slate-400'}`}>Turn</span>
                       <span className={`text-2xl font-black leading-none ${game.turnCount >= 9 ? 'text-red-600 animate-pulse' : 'text-slate-700'}`}>{game.turnCount}</span>
-                  </div>
-                  
-                  <div className="w-px h-8 bg-slate-300 mx-1"></div>
-
-                  {/* Player Health */}
-                  <div className="flex items-center gap-2">
-                      <div className="text-rose-500 text-2xl animate-pulse">❤️</div>
-                      <div className="flex flex-col w-40">
-                          <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-0.5">
-                              <span>HP</span>
-                              <span>{game.player.currentHp}/{game.player.maxHp}</span>
-                          </div>
-                          <div className="h-4 bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
-                              <div className="h-full bg-rose-500 transition-all duration-300 relative" style={{width: `${(game.player.currentHp / game.player.maxHp) * 100}%`}}>
-                                  <div className="absolute inset-0 bg-white/20 w-full h-1/2 top-0"></div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="w-px h-8 bg-slate-300 mx-1"></div>
-
-                  {/* Energy */}
-                  <div className="flex items-center gap-2">
-                      <div className="flex flex-col items-end mr-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Energy</span>
-                          <span className="text-xl font-black text-amber-500 leading-none">{game.player.currentEnergy}/{game.player.maxEnergy}</span>
-                      </div>
-                      <div className="flex gap-1">
-                          {[...Array(game.player.maxEnergy)].map((_, i) => (
-                              <div key={i} className={`w-5 h-5 rounded-full border-2 border-amber-300 transition-all duration-300 ${i < game.player.currentEnergy ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110' : 'bg-transparent scale-90'}`}></div>
-                          ))}
-                      </div>
-                  </div>
+                   </div>
               </div>
           </div>
 
-          {/* --- Layer: Battlefield (Middle) --- */}
-          
-          {/* Player Position: Centered vertically, offset left */}
-          <div className={`absolute left-[12%] bottom-[30%] z-10 transition-transform duration-100 ${game.shakingTargets.includes('PLAYER') ? 'animate-shake' : ''}`}>
+          {/* --- ENEMIES ZONE (Top Half) --- */}
+          <div className="absolute top-[14%] left-0 right-0 flex justify-center items-end z-10 h-[35%] pointer-events-none">
+             <div className="flex items-end gap-2 md:gap-6 pointer-events-auto px-4 pb-4">
+                 {game.enemies.map((enemy: any) => (
+                     <EnemyComponent 
+                        key={enemy.id} 
+                        enemy={enemy} 
+                        isShake={game.shakingTargets.includes(enemy.id)} 
+                        isFlash={game.flashTargets.includes(enemy.id)}
+                        isActive={game.activeEnemyId === enemy.id}
+                        isTargetable={dragState.isDragging && dragState.needsTarget} 
+                        isSelected={dragState.isHoveringTarget === enemy.id}
+                        floatingTexts={getTextsFor(enemy.id)}
+                        onClick={(id) => {}}
+                     />
+                 ))}
+             </div>
+          </div>
+
+          {/* --- PLAYER ZONE (Bottom Left) --- */}
+          <div className={`absolute left-[8%] bottom-[20%] z-10 flex flex-col items-center transition-transform duration-100 ${game.shakingTargets.includes('PLAYER') ? 'animate-shake' : ''}`}>
                
-               {/* Floating Texts for Player */}
+               {/* Player Floating Texts */}
                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 overflow-visible z-50 pointer-events-none">
                     {getTextsFor('PLAYER').map(ft => (
                         <div key={ft.id} className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black text-5xl flex justify-center w-60 -ml-30 text-center`}>
@@ -99,141 +85,149 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
                     ))}
                </div>
 
-               {/* Block Shield */}
-               {game.player.block > 0 && (
-                   <div className="absolute -top-6 -right-4 z-20 bg-blue-500 text-white w-14 h-14 flex items-center justify-center rounded-full font-black shadow-lg border-2 border-white animate-pop text-xl">
-                       🛡️{game.player.block}
-                   </div>
-               )}
-               
-               <div className="flex flex-col items-center">
-                   <div className={`text-[9rem] md:text-[10rem] filter drop-shadow-2xl relative z-10 animate-float-slow leading-none ${game.flashTargets.includes('PLAYER') ? 'animate-hit-flash' : ''}`}>
-                       {game.player.emoji}
-                   </div>
-                   <div className="w-32 h-6 bg-black/20 rounded-[50%] blur-md animate-shadow -mt-4"></div>
-               </div>
-
-               {/* Skills/Runes */}
-               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 flex gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-2xl border-2 border-white/50 shadow-sm">
+               {/* Skills/Runes (Above Head) */}
+               <div className="mb-4 flex gap-2 bg-white/40 p-1 rounded-xl backdrop-blur-sm">
                    {game.player.skills.map((skill: any) => (
                       <button 
                           key={skill.id}
                           onMouseDown={(e) => startDragSkill(e, skill)}
                           onTouchStart={(e) => startDragSkill(e, skill)}
                           disabled={game.phase !== 'PLAYER_TURN' || (skill.currentCooldown || 0) > 0}
-                          className={`relative w-12 h-12 rounded-xl shadow-sm flex items-center justify-center text-2xl border-2 border-white transition-all hover:scale-110 hover:shadow-md
+                          className={`relative w-10 h-10 rounded-lg shadow-sm flex items-center justify-center text-xl border-2 border-white transition-all hover:scale-110 hover:shadow-md
                           ${skill.type === SkillType.PASSIVE ? 'bg-purple-500' : (skill.currentCooldown || 0) > 0 ? 'bg-slate-400' : 'bg-amber-400'}`}
                           title={skill.description}
                       >
                           {skill.emoji}
-                          {(skill.currentCooldown || 0) > 0 && <div className="absolute inset-0 bg-slate-800/60 rounded-xl flex items-center justify-center text-white font-bold text-sm">{skill.currentCooldown}</div>}
+                          {(skill.currentCooldown || 0) > 0 && <div className="absolute inset-0 bg-slate-800/60 rounded-lg flex items-center justify-center text-white font-bold text-xs">{skill.currentCooldown}</div>}
                       </button>
                    ))}
                </div>
+
+               {/* Block Shield */}
+               {game.player.block > 0 && (
+                   <div className="absolute top-10 -right-4 z-20 bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full font-black shadow-lg border-2 border-white animate-pop text-lg">
+                       🛡️{game.player.block}
+                   </div>
+               )}
+               
+               {/* Avatar */}
+               <div className="flex flex-col items-center">
+                   <div className={`text-[8rem] md:text-[9rem] filter drop-shadow-2xl relative z-10 animate-float-slow leading-none ${game.flashTargets.includes('PLAYER') ? 'animate-hit-flash' : ''}`}>
+                       {game.player.emoji}
+                   </div>
+                   <div className="w-28 h-5 bg-black/20 rounded-[50%] blur-md animate-shadow -mt-4"></div>
+               </div>
+
+               {/* Player Stats Panel (HP & Energy) */}
+               <div className="mt-4 flex flex-col gap-1 bg-white/90 backdrop-blur p-2 rounded-xl border-2 border-slate-100 shadow-lg w-44 transform transition-transform hover:scale-105">
+                    {/* HP Bar */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-rose-500 w-4">HP</span>
+                        <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden border border-slate-300 relative">
+                             <div className="h-full bg-rose-500 transition-all duration-300" style={{width: `${(game.player.currentHp / game.player.maxHp) * 100}%`}}>
+                                 <div className="absolute inset-0 bg-white/20 w-full h-1/2 top-0"></div>
+                             </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-600 w-6 text-right">{game.player.currentHp}</span>
+                    </div>
+                    
+                    {/* Energy Bar */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-amber-500 w-4">MP</span>
+                        <div className="flex-1 flex gap-1">
+                             {[...Array(game.player.maxEnergy)].map((_, i) => (
+                                  <div key={i} className={`w-3 h-3 rounded-full border border-amber-400 transition-all duration-300 ${i < game.player.currentEnergy ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.8)]' : 'bg-slate-100'}`}></div>
+                             ))}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-600 w-6 text-right">{game.player.currentEnergy}/{game.player.maxEnergy}</span>
+                    </div>
+               </div>
           </div>
 
-          {/* Enemy Position: Offset right */}
-          <div className="absolute right-[8%] bottom-[30%] z-10 flex gap-6 items-end pr-4">
-             {game.enemies.map((enemy: any) => (
-                 <EnemyComponent 
-                    key={enemy.id} 
-                    enemy={enemy} 
-                    isShake={game.shakingTargets.includes(enemy.id)} 
-                    isFlash={game.flashTargets.includes(enemy.id)}
-                    isTargetable={dragState.isDragging && dragState.needsTarget} 
-                    isSelected={dragState.isHoveringTarget === enemy.id}
-                    floatingTexts={getTextsFor(enemy.id)}
-                    onClick={(id) => {
-                        // Optional tap to target logic could go here if not dragging
-                    }}
-                 />
-             ))}
+          {/* --- CONTROLS LAYER --- */}
+          
+          {/* Deck Pile (Bottom Left) */}
+          <div className="absolute left-4 bottom-4 z-20 pointer-events-auto group hover:scale-105 transition-transform cursor-pointer">
+              <div className="w-16 h-24 bg-gradient-to-br from-amber-800 to-amber-900 rounded-lg border-2 border-amber-700 shadow-xl flex items-center justify-center relative">
+                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-50 rounded-lg"></div>
+                 <span className="z-10 text-amber-100 font-black text-2xl drop-shadow-md">{game.drawPile.length}</span>
+                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">牌堆</div>
+              </div>
           </div>
 
-          {/* Floating Texts Overlay (Legacy / General) */}
+          {/* Discard Pile (Bottom Right) */}
+          <div className="absolute right-4 bottom-4 z-20 pointer-events-auto group hover:scale-105 transition-transform">
+               <div className="w-16 h-24 bg-slate-700 rounded-lg border-2 border-slate-600 flex items-center justify-center shadow-xl relative">
+                 <span className="z-10 text-slate-200 font-black text-2xl drop-shadow-md">{game.discardPile.length}</span>
+                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">弃牌</div>
+              </div>
+          </div>
+
+          {/* End Turn Button (Right Side) */}
+          <div className="absolute bottom-[40%] right-4 z-30 pointer-events-auto">
+              <button 
+                onClick={game.endTurn} 
+                onTouchEnd={(e) => { e.stopPropagation(); game.endTurn(); }}
+                disabled={game.phase !== 'PLAYER_TURN'} 
+                className={`
+                    w-24 h-24 rounded-full font-black text-white shadow-xl transition-all duration-200 border-4 border-white/30 flex flex-col items-center justify-center
+                    ${game.phase === 'PLAYER_TURN' 
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600 hover:scale-105 active:scale-95 shadow-orange-500/40' 
+                        : 'bg-slate-500 grayscale cursor-not-allowed opacity-80'}
+                `}
+              >
+                <span className="text-xl leading-none mb-1">{game.phase === 'ENEMY_TURN' ? '🚫' : '⚔️'}</span>
+                <span className="text-xs uppercase tracking-wider">{game.phase === 'ENEMY_TURN' ? '敌方' : '结束'}</span>
+              </button>
+          </div>
+
+          {/* Floating Texts Overlay (General) */}
           <div className="absolute inset-0 pointer-events-none z-40">
             {game.floatingTexts.filter((ft: any) => !ft.targetId).map((ft: any) => (<div key={ft.id} className={`absolute animate-damage ${ft.color} font-black text-stroke text-5xl`} style={{ left: `${ft.x}%`, top: `${ft.y}%` }}>{ft.text}</div>))}
           </div>
 
-          {/* --- Layer: Bottom UI (Hand, Piles) --- */}
-          <div className="absolute bottom-0 left-0 w-full h-[200px] z-20 pointer-events-none">
-              
-              {/* Piles */}
-              <div className="absolute left-6 bottom-6 pointer-events-auto group hover:scale-105 transition-transform cursor-pointer">
-                  <div className="w-20 h-28 bg-gradient-to-br from-amber-800 to-amber-900 rounded-xl border-4 border-amber-700 shadow-2xl flex items-center justify-center relative">
-                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-50 rounded-lg"></div>
-                     <div className="z-10 text-amber-100 font-black text-3xl drop-shadow-md">{game.drawPile.length}</div>
-                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">牌堆</div>
-                  </div>
-              </div>
+          {/* Hand Container (Bottom Center) */}
+          <div className="absolute bottom-0 left-0 right-0 h-[240px] flex items-end justify-center pointer-events-none z-30 pb-2">
+               <div className="relative flex items-end h-52 w-[700px] justify-center">
+                  {game.hand.map((card: any, index: number) => {
+                      const total = game.hand.length;
+                      const center = (total - 1) / 2;
+                      const offset = index - center;
+                      const rotate = offset * 3; 
+                      const translateY = Math.abs(offset) * 8; 
+                      
+                      const isBeingDragged = dragState.isDragging && dragState.itemId === card.id;
+                      const isGroupMatch = dragState.isDragging && dragState.groupTag && card.groupTag === dragState.groupTag && card.id !== dragState.itemId;
+                      
+                      // Adjust spacing based on card count
+                      const xSpacing = Math.min(90, 700 / (total + 1));
 
-              <div className="absolute right-6 bottom-6 pointer-events-auto group hover:scale-105 transition-transform">
-                   <div className="w-20 h-28 bg-slate-700 rounded-xl border-4 border-slate-600 flex items-center justify-center shadow-2xl relative">
-                     <div className="z-10 text-slate-200 font-black text-3xl drop-shadow-md">{game.discardPile.length}</div>
-                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">弃牌</div>
-                  </div>
-              </div>
-
-              {/* End Turn Button */}
-              <div className="absolute bottom-32 right-6 pointer-events-auto z-30">
-                  <button 
-                    onClick={game.endTurn} 
-                    onTouchEnd={(e) => { e.stopPropagation(); game.endTurn(); }}
-                    disabled={game.phase !== 'PLAYER_TURN'} 
-                    className={`
-                        px-6 py-3 rounded-xl font-black text-white shadow-[0_6px_0_rgba(0,0,0,0.2)] transition-all duration-200 uppercase tracking-widest text-lg border-2 border-white/20
-                        ${game.phase === 'PLAYER_TURN' 
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:translate-y-1 hover:shadow-[0_3px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none' 
-                            : 'bg-slate-500 grayscale cursor-not-allowed opacity-80 shadow-none translate-y-2'}
-                    `}
-                  >
-                    {game.phase === 'ENEMY_TURN' ? '敌方回合' : '结束回合'}
-                  </button>
-              </div>
-
-              {/* Hand Container */}
-              <div className="absolute bottom-0 left-0 right-0 h-full flex items-end justify-center pointer-events-auto pb-4 perspective-1000">
-                   <div className="relative flex items-end h-52 w-[700px] justify-center">
-                      {game.hand.map((card: any, index: number) => {
-                          const total = game.hand.length;
-                          const center = (total - 1) / 2;
-                          const offset = index - center;
-                          const rotate = offset * 3; 
-                          const translateY = Math.abs(offset) * 6; 
-                          
-                          const isBeingDragged = dragState.isDragging && dragState.itemId === card.id;
-                          const isGroupMatch = dragState.isDragging && dragState.groupTag && card.groupTag === dragState.groupTag && card.id !== dragState.itemId;
-                          
-                          // Fan spacing (Slightly tighter for 720p)
-                          const xSpacing = Math.min(80, 700 / total);
-
-                          return (
-                            <div key={card.id} className="origin-bottom transition-all duration-300 absolute bottom-0 will-change-transform"
-                                style={{ 
-                                    left: '50%',
-                                    marginLeft: `${offset * xSpacing}px`, // Center based positioning
-                                    zIndex: isBeingDragged ? 100 : index,
-                                    transform: isBeingDragged 
-                                        ? `translate(${offset * xSpacing}px, -200px) scale(0.01)` // Visually hide original while dragging
-                                        : `translate(-50%, ${translateY}px) rotate(${rotate}deg)`,
-                                    opacity: isBeingDragged ? 0 : 1 
-                                }}
-                            >
-                                <div className="-translate-x-1/2">
-                                    <CardComponent 
-                                        card={card} 
-                                        index={index}
-                                        playable={game.phase === 'PLAYER_TURN' && game.player.currentEnergy >= card.cost} 
-                                        disabled={game.phase !== 'PLAYER_TURN' || game.player.currentEnergy < card.cost}
-                                        isDragging={isBeingDragged}
-                                        isGroupHighlighted={isGroupMatch}
-                                        onMouseDown={startDragCard}
-                                    />
-                                </div>
+                      return (
+                        <div key={card.id} className="origin-bottom transition-all duration-300 absolute bottom-0 will-change-transform pointer-events-auto"
+                            style={{ 
+                                left: '50%',
+                                marginLeft: `${offset * xSpacing}px`, 
+                                zIndex: isBeingDragged ? 100 : index,
+                                transform: isBeingDragged 
+                                    ? `translate(${offset * xSpacing}px, -200px) scale(0.01)` 
+                                    : `translate(-50%, ${translateY}px) rotate(${rotate}deg)`,
+                                opacity: isBeingDragged ? 0 : 1 
+                            }}
+                        >
+                            <div className="-translate-x-1/2">
+                                <CardComponent 
+                                    card={card} 
+                                    index={index}
+                                    playable={game.phase === 'PLAYER_TURN' && game.player.currentEnergy >= card.cost} 
+                                    disabled={game.phase !== 'PLAYER_TURN' || game.player.currentEnergy < card.cost}
+                                    isDragging={isBeingDragged}
+                                    isGroupHighlighted={isGroupMatch}
+                                    onMouseDown={startDragCard}
+                                />
                             </div>
-                          );
-                      })}
-                  </div>
+                        </div>
+                      );
+                  })}
               </div>
           </div>
 

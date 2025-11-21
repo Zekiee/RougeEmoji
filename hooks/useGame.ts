@@ -28,6 +28,7 @@ export const useGame = () => {
   const [vfxEvents, setVfxEvents] = useState<VFXEvent[]>([]);
   const [shakingTargets, setShakingTargets] = useState<string[]>([]);
   const [flashTargets, setFlashTargets] = useState<string[]>([]); // New: White flash on hit
+  const [activeEnemyId, setActiveEnemyId] = useState<string | null>(null); // New: Track acting enemy for animations
   const [rewards, setRewards] = useState<{cards: Card[], skill?: any}>({cards: []});
 
   // --- VFX Helpers ---
@@ -117,29 +118,6 @@ export const useGame = () => {
               if (effect.type === EffectType.BLOCK || effect.type === EffectType.HEAL) {
                    triggerVFX('BUFF', 200, 400); // Approx player pos
               }
-         } else if (targets.length > 0) {
-             targets.forEach(t => {
-                 const targetEl = document.querySelector(`[data-enemy-id="${t.id}"]`);
-                 if (targetEl) {
-                     const rect = targetEl.getBoundingClientRect();
-                     // Calculate roughly center of enemy based on DOM
-                     const centerX = rect.left + rect.width / 2;
-                     const centerY = rect.top + rect.height / 2;
-                     
-                     // We use the game logic coordinates, but since we don't have exact mapping in hook,
-                     // we pass the type and let the VFX layer handle absolute position from drag or just spawn on target.
-                     // For now, we just trigger effects.
-                     if (effect.type === EffectType.DAMAGE) {
-                         // Pass undefined coords to let the VFXLayer/EnemyComponent maybe handle it? 
-                         // Or better, calculate screen relative if possible. 
-                         // Simpler: just assume we want VFX at target.
-                         // Since we can't easily get coords here without ref, we rely on visual feedback in components or pass generic coords.
-                         // But wait, triggerVFX expects game coordinates.
-                         // We'll assume the caller provided startX/startY is good for "source", and we might not know exact target destination in logic.
-                         // Let's just spawn a slash at the source for now, or if we had target coords.
-                     }
-                 }
-             });
          }
     }
 
@@ -433,10 +411,16 @@ export const useGame = () => {
 
             for (const enemy of enemies) {
                 if (enemy.currentHp <= 0) continue;
-                await new Promise(r => setTimeout(r, 600));
                 
+                await new Promise(r => setTimeout(r, 300)); // Wait between enemies
+                
+                setActiveEnemyId(enemy.id);
+
                 // Logic
                 if (enemy.intent === IntentType.ATTACK) {
+                    // WIND-UP Phase: Wait for animation to reach impact point (approx 40-50%)
+                    await new Promise(r => setTimeout(r, 200));
+
                     const dmg = calculateDamage(enemy.intentValue, enemy, 'PLAYER');
                     let take = dmg;
                     if (player.block >= take) {
@@ -446,18 +430,28 @@ export const useGame = () => {
                         take -= player.block;
                         setPlayer(p => ({...p, block: 0}));
                     }
+                    
                     if (take > 0) {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
                         addFloatingText(`-${take}`, 'PLAYER', undefined, undefined, 'text-red-600 font-black', 'large');
-                        triggerVFX('SLASH', 200, 400, undefined, undefined, CardTheme.DARK); // Player approx
+                        // Use aggressive explosion for attacks
+                        triggerVFX('EXPLOSION', 200, 400, undefined, undefined, CardTheme.FIRE); 
                     } else {
                         addFloatingText("格挡", 'PLAYER', undefined, undefined, 'text-gray-400', 'small');
                     }
+
+                    // RECOVERY Phase: Wait for animation to finish
+                    await new Promise(r => setTimeout(r, 300));
+
                 } else if (enemy.intent === IntentType.BUFF) {
+                    await new Promise(r => setTimeout(r, 400)); // Anim delay
                     setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, block: e.block + 10} : e));
                     addFloatingText("+10 🛡️", enemy.id, undefined, undefined, 'text-blue-400', 'medium');
+                    await new Promise(r => setTimeout(r, 200));
+
                 } else if (enemy.intent === IntentType.SUMMON) {
+                    await new Promise(r => setTimeout(r, 400)); // Anim delay
                     if (enemies.filter(e => e.currentHp > 0).length < 4) {
                          const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
                          const t = minionTemplates[Math.floor(Math.random() * minionTemplates.length)];
@@ -471,12 +465,15 @@ export const useGame = () => {
                             intent: IntentType.ATTACK, intentValue: Math.floor(level * 0.8) + 3, isBoss: false
                         };
                         setEnemies(prev => [...prev, newMinion]);
-                        triggerVFX('EXPLOSION', 800, 400, undefined, undefined, CardTheme.DARK); // Approx
+                        triggerVFX('EXPLOSION', 800, 400, undefined, undefined, CardTheme.DARK); 
                         addFloatingText("援军!", enemy.id, undefined, undefined, 'text-purple-500', 'medium');
                     } else {
                         addFloatingText("召唤失败", enemy.id, undefined, undefined, 'text-gray-400', 'small');
                     }
+                    await new Promise(r => setTimeout(r, 200));
+
                 } else if (enemy.intent === IntentType.SPECIAL) {
+                    await new Promise(r => setTimeout(r, 200));
                     const dmg = calculateDamage(Math.floor(enemy.intentValue * 1.5), enemy, 'PLAYER');
                      let take = dmg;
                      if (player.block >= take) {
@@ -490,8 +487,9 @@ export const useGame = () => {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
                         addFloatingText(`💥 ${take}`, 'PLAYER', undefined, undefined, 'text-red-800 font-black', 'large');
-                        triggerVFX('EXPLOSION', 200, 400, undefined, undefined, CardTheme.FIRE); // Player Approx
+                        triggerVFX('EXPLOSION', 200, 400, undefined, undefined, CardTheme.FIRE);
                     }
+                    await new Promise(r => setTimeout(r, 300));
                 }
 
                 // Prepare Next Intent
@@ -522,6 +520,8 @@ export const useGame = () => {
                 }
                 
                 setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, intent: nextType, intentValue: nextVal} : e));
+                
+                setActiveEnemyId(null);
             }
             
             setTurnCount(prev => prev + 1);
@@ -553,7 +553,7 @@ export const useGame = () => {
       player, setPlayer,
       deck, setDeck,
       hand, drawPile, discardPile,
-      enemies, floatingTexts, vfxEvents, shakingTargets, flashTargets,
+      enemies, floatingTexts, vfxEvents, shakingTargets, flashTargets, activeEnemyId,
       rewards,
       startLevel, playCard, playCardBatch, useSkill, endTurn,
       calculateDamage

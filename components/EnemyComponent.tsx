@@ -6,16 +6,19 @@ interface EnemyProps {
   enemy: Enemy;
   isShake: boolean;
   isFlash: boolean; // Strobe white flash
+  isActive?: boolean; // Is currently taking turn
   isSelected?: boolean; 
   isTargetable?: boolean;
   floatingTexts?: FloatingText[]; // New: Texts specific to this enemy
   onClick?: (id: string) => void;
 }
 
-const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelected, isTargetable, floatingTexts = [], onClick }) => {
+const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isActive, isSelected, isTargetable, floatingTexts = [], onClick }) => {
   
   const isDead = enemy.currentHp <= 0;
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  const isAttacking = isActive && enemy.intent === IntentType.ATTACK;
 
   useEffect(() => {
       if (isDead) {
@@ -116,7 +119,7 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelec
               <div className={`
                 flex items-center justify-center text-7xl md:text-8xl 
                 filter drop-shadow-xl transition-transform duration-100 relative z-10
-                ${isShake ? 'animate-shake' : 'animate-float'}
+                ${isShake ? 'animate-shake' : isAttacking ? 'animate-lunge' : 'animate-float'}
                 ${isFlash ? 'animate-hit-flash' : ''}
                 ${enemy.isBoss ? 'text-[9rem] md:text-[11rem]' : ''} 
               `}>
