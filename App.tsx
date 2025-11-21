@@ -6,6 +6,7 @@ import { useDragController } from './hooks/useDragController';
 import { CARD_DATABASE } from './data/cards'; 
 import { generateId } from './constants';
 import { CardTheme } from './types';
+import CardComponent from './components/CardComponent'; 
 
 // Screens & Components
 import StartScreen from './components/screens/StartScreen';
@@ -42,7 +43,6 @@ export const App = () => {
     if (requestFull) {
         requestFull.call(docEl).catch((e: any) => console.log("Fullscreen blocked", e));
     }
-    // Attempt orientation lock (some browsers allow this)
     const screen = window.screen as any;
     if (screen && screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
@@ -50,9 +50,33 @@ export const App = () => {
   };
 
   // --- Render Helpers ---
+  
+  // Ghost Card Position Logic
+  const getGhostPosition = () => {
+      // If targeting (Arrow mode), clamp the visual card to near the hand
+      if (dragState.needsTarget) {
+          return {
+              x: dragState.startX,
+              y: dragState.startY - 150 // Pop up and stay fixed above hand
+          };
+      }
+      // Otherwise follow finger
+      return {
+          x: dragState.currentX,
+          y: dragState.currentY
+      };
+  };
+
   const renderArrow = () => {
       if (!dragState.isDragging || !dragState.needsTarget) return null;
-      const { startX, startY, currentX, currentY } = dragState;
+      
+      // Start from the clamped ghost position
+      const ghostPos = getGhostPosition();
+      const startX = ghostPos.x;
+      const startY = ghostPos.y; 
+      
+      // End at finger
+      const { currentX, currentY, isHoveringTarget } = dragState;
       
       // Control point for Quadratic Bezier
       const controlX = startX; 
@@ -61,14 +85,12 @@ export const App = () => {
       const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${currentX} ${currentY}`;
       
       // Calculate arrow head rotation
-      // Tangent at end point (t=1) for Q bezier B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
-      // Derivative B'(t) = 2(1-t)(P1-P0) + 2t(P2-P1)
-      // At t=1: B'(1) = 2(P2-P1) -> vector from Control to End
       const angle = Math.atan2(currentY - controlY, currentX - controlX) * 180 / Math.PI;
       
       let color = "rgb(244, 63, 94)"; // Rose-500
       if (dragState.theme === CardTheme.ICE) color = "rgb(103, 232, 249)";
       if (dragState.theme === CardTheme.POISON) color = "rgb(168, 85, 247)";
+      if (isHoveringTarget) color = "rgb(250, 204, 21)"; // Yellow/Gold highlight when hovering target
 
       return (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-[90] overflow-visible">
@@ -81,26 +103,38 @@ export const App = () => {
                       </feMerge>
                   </filter>
               </defs>
-              <path d={path} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray="20,15" className="animate-[dash_0.5s_linear_infinite]" filter="url(#glow)" />
-              <polygon points="0,0 30,12 0,24" fill={color} transform={`translate(${currentX}, ${currentY}) rotate(${angle}) translate(-30, -12)`} filter="url(#glow)" />
+              <path d={path} fill="none" stroke={color} strokeWidth={isHoveringTarget ? "12" : "8"} strokeLinecap="round" strokeDasharray="20,15" className="animate-[dash_0.5s_linear_infinite]" filter="url(#glow)" />
+              <polygon points="0,0 30,12 0,24" fill={color} transform={`translate(${currentX}, ${currentY}) rotate(${angle}) translate(-30, -12) ${isHoveringTarget ? 'scale(1.5)' : ''}`} filter="url(#glow)" />
           </svg>
       );
   };
 
   const renderGhost = () => {
-      if (!dragState.isDragging || dragState.needsTarget) return null;
-      return (
-          <div 
-            className="absolute pointer-events-none z-[100] opacity-70" 
-            style={{ 
-                left: dragState.currentX, 
-                top: dragState.currentY,
-                transform: `translate(-50%, -50%) scale(1.5)` 
-            }}
-          >
-              <div className="text-8xl filter drop-shadow-2xl">{dragState.sourceItem?.emoji || '🃏'}</div>
-          </div>
-      );
+      if (!dragState.isDragging) return null;
+      
+      const { x, y } = getGhostPosition();
+      
+      if (dragState.dragType === 'CARD' && dragState.sourceItem) {
+          return (
+            <div 
+                className="absolute pointer-events-none z-[100]" 
+                style={{ 
+                    left: x, 
+                    top: y,
+                    transform: `translate(-50%, -50%) scale(1.1)` 
+                }}
+            >
+                <CardComponent 
+                    card={dragState.sourceItem as any} 
+                    playable={false} 
+                    isDragging={true}
+                    noAnim={true} // Disable entry animation
+                />
+            </div>
+          );
+      }
+      
+      return null;
   };
 
   const renderLoading = () => (
@@ -114,10 +148,10 @@ export const App = () => {
   return (
       <div className="fixed inset-0 bg-stone-900 overflow-hidden select-none">
           {/* 
-             The Virtual 1600x900 Container.
-             Everything inside works with 1600x900 coordinates.
+             The Virtual Container (1280x720).
+             Everything inside works with 1280x720 coordinates.
           */}
-          <div style={containerStyle} className="bg-amber-50 shadow-2xl overflow-hidden">
+          <div style={containerStyle} className="bg-amber-50 shadow-2xl overflow-hidden origin-center">
               
               {game.phase === 'START_SCREEN' && (
                   <StartScreen 

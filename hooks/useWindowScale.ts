@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 
-// 修改为 720P 分辨率，这样在手机和电脑上元素都会显得更大
+// 修改为 720P 分辨率 (1280x720)，这会使元素在标准屏幕上看起来更大
+// 1600x900 -> 1280x720 (约放大了 25%)
 export const DESIGN_WIDTH = 1280;
 export const DESIGN_HEIGHT = 720;
 

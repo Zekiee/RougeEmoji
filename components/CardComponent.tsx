@@ -12,9 +12,10 @@ interface CardProps {
   isDragging?: boolean;
   isGroupHighlighted?: boolean;
   index?: number; // 用于动画延迟
+  noAnim?: boolean; // Disable entry animation for ghost
 }
 
-const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playable, disabled, selected, isDragging, isGroupHighlighted, index = 0 }) => {
+const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playable, disabled, selected, isDragging, isGroupHighlighted, index = 0, noAnim = false }) => {
   
   const getTypeColor = (type: CardType) => {
     switch (type) {
@@ -74,12 +75,12 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
         w-28 h-40 md:w-36 md:h-52 
         rounded-lg md:rounded-xl border-2 md:border-[3px] 
         transition-all duration-200 transform select-none
-        flex flex-col overflow-hidden animate-draw-card origin-bottom
+        flex flex-col overflow-hidden ${noAnim ? '' : 'animate-draw-card'} origin-bottom
         ${getThemeStyle(card.theme)}
-        ${selected ? 'ring-4 ring-yellow-400 -translate-y-4 scale-110 z-50' : ''}
+        ${selected ? 'ring-4 ring-yellow-400 -translate-y-2 scale-110 z-50' : ''}
         ${isGroupHighlighted ? 'ring-4 ring-emerald-400 -translate-y-2 scale-105' : ''}
-        ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50 opacity-50' : ''}
-        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-4 hover:scale-110 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
+        ${isDragging ? 'ring-4 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-50 opacity-100' : ''}
+        ${playable && !disabled && !selected && !isGroupHighlighted && !isDragging ? 'hover:-translate-y-2 hover:scale-105 hover:z-50 hover:shadow-xl cursor-grab active:cursor-grabbing' : ''}
         ${disabled && !selected ? 'opacity-80 grayscale cursor-not-allowed brightness-90' : ''}
       `}
     >
@@ -97,7 +98,7 @@ const CardComponent: React.FC<CardProps> = ({ card, onMouseDown, onClick, playab
       {/* Card Art Area */}
       <div className={`h-20 md:h-28 w-full flex items-center justify-center relative overflow-hidden bg-white/50`}>
         <div className={`absolute inset-0 opacity-10 bg-current`} style={{color: card.theme === CardTheme.FIRE ? 'red' : 'black'}}></div>
-        <span className="text-5xl md:text-7xl filter drop-shadow-md transform hover:scale-110 transition-transform duration-300 relative z-10">{card.emoji || '🃏'}</span>
+        <span className="text-5xl md:text-7xl filter drop-shadow-md transform transition-transform duration-300 relative z-10">{card.emoji || '🃏'}</span>
       </div>
 
       {/* Type Ribbon */}

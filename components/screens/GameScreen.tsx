@@ -36,8 +36,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
           </div>
     
           {/* --- Layer: HUD (Top) --- */}
-          <div className="absolute top-0 left-0 right-0 h-28 z-30 pointer-events-none flex justify-center pt-3">
-              <div className="bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border-b-4 border-slate-200 flex items-center gap-6 pointer-events-auto transition-all h-18">
+          <div className="absolute top-0 left-0 right-0 h-24 z-30 pointer-events-none flex justify-center pt-3">
+              <div className="bg-white/90 backdrop-blur-md px-6 py-1 rounded-full shadow-lg border-b-4 border-slate-200 flex items-center gap-6 pointer-events-auto transition-all h-16">
                   {/* Level */}
                   <div className="flex flex-col items-center w-14">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Level</span>
@@ -55,12 +55,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
                   {/* Player Health */}
                   <div className="flex items-center gap-2">
                       <div className="text-rose-500 text-2xl animate-pulse">❤️</div>
-                      <div className="flex flex-col w-32">
+                      <div className="flex flex-col w-40">
                           <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-0.5">
                               <span>HP</span>
                               <span>{game.player.currentHp}/{game.player.maxHp}</span>
                           </div>
-                          <div className="h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
+                          <div className="h-4 bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
                               <div className="h-full bg-rose-500 transition-all duration-300 relative" style={{width: `${(game.player.currentHp / game.player.maxHp) * 100}%`}}>
                                   <div className="absolute inset-0 bg-white/20 w-full h-1/2 top-0"></div>
                               </div>
@@ -78,7 +78,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
                       </div>
                       <div className="flex gap-1">
                           {[...Array(game.player.maxEnergy)].map((_, i) => (
-                              <div key={i} className={`w-4 h-4 rounded-full border-2 border-amber-300 transition-all duration-300 ${i < game.player.currentEnergy ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110' : 'bg-transparent scale-90'}`}></div>
+                              <div key={i} className={`w-5 h-5 rounded-full border-2 border-amber-300 transition-all duration-300 ${i < game.player.currentEnergy ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] scale-110' : 'bg-transparent scale-90'}`}></div>
                           ))}
                       </div>
                   </div>
@@ -88,12 +88,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
           {/* --- Layer: Battlefield (Middle) --- */}
           
           {/* Player Position: Centered vertically, offset left */}
-          <div className={`absolute left-[15%] bottom-[32%] z-10 transition-transform duration-100 ${game.shakingTargets.includes('PLAYER') ? 'animate-shake' : ''}`}>
+          <div className={`absolute left-[12%] bottom-[30%] z-10 transition-transform duration-100 ${game.shakingTargets.includes('PLAYER') ? 'animate-shake' : ''}`}>
                
                {/* Floating Texts for Player */}
                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 overflow-visible z-50 pointer-events-none">
                     {getTextsFor('PLAYER').map(ft => (
-                        <div key={ft.id} className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black text-4xl flex justify-center w-40 -ml-20 text-center`}>
+                        <div key={ft.id} className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black text-5xl flex justify-center w-60 -ml-30 text-center`}>
                             {ft.text}
                         </div>
                     ))}
@@ -101,27 +101,27 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
 
                {/* Block Shield */}
                {game.player.block > 0 && (
-                   <div className="absolute -top-6 -right-4 z-20 bg-blue-500 text-white w-12 h-12 flex items-center justify-center rounded-full font-black shadow-lg border-2 border-white animate-pop text-lg">
+                   <div className="absolute -top-6 -right-4 z-20 bg-blue-500 text-white w-14 h-14 flex items-center justify-center rounded-full font-black shadow-lg border-2 border-white animate-pop text-xl">
                        🛡️{game.player.block}
                    </div>
                )}
                
                <div className="flex flex-col items-center">
-                   <div className={`text-[8rem] md:text-[9rem] filter drop-shadow-2xl relative z-10 animate-float-slow leading-none ${game.flashTargets.includes('PLAYER') ? 'animate-hit-flash' : ''}`}>
+                   <div className={`text-[9rem] md:text-[10rem] filter drop-shadow-2xl relative z-10 animate-float-slow leading-none ${game.flashTargets.includes('PLAYER') ? 'animate-hit-flash' : ''}`}>
                        {game.player.emoji}
                    </div>
-                   <div className="w-28 h-5 bg-black/20 rounded-[50%] blur-md animate-shadow -mt-4"></div>
+                   <div className="w-32 h-6 bg-black/20 rounded-[50%] blur-md animate-shadow -mt-4"></div>
                </div>
 
                {/* Skills/Runes */}
-               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-6 flex gap-3 p-2 bg-white/50 backdrop-blur-sm rounded-2xl border-2 border-white/50 shadow-sm">
+               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 flex gap-3 p-3 bg-white/50 backdrop-blur-sm rounded-2xl border-2 border-white/50 shadow-sm">
                    {game.player.skills.map((skill: any) => (
                       <button 
                           key={skill.id}
                           onMouseDown={(e) => startDragSkill(e, skill)}
                           onTouchStart={(e) => startDragSkill(e, skill)}
                           disabled={game.phase !== 'PLAYER_TURN' || (skill.currentCooldown || 0) > 0}
-                          className={`relative w-10 h-10 rounded-xl shadow-sm flex items-center justify-center text-xl border-2 border-white transition-all hover:scale-110 hover:shadow-md
+                          className={`relative w-12 h-12 rounded-xl shadow-sm flex items-center justify-center text-2xl border-2 border-white transition-all hover:scale-110 hover:shadow-md
                           ${skill.type === SkillType.PASSIVE ? 'bg-purple-500' : (skill.currentCooldown || 0) > 0 ? 'bg-slate-400' : 'bg-amber-400'}`}
                           title={skill.description}
                       >
@@ -133,7 +133,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
           </div>
 
           {/* Enemy Position: Offset right */}
-          <div className="absolute right-[12%] bottom-[32%] z-10 flex gap-8 items-end pr-4">
+          <div className="absolute right-[8%] bottom-[30%] z-10 flex gap-6 items-end pr-4">
              {game.enemies.map((enemy: any) => (
                  <EnemyComponent 
                     key={enemy.id} 
@@ -143,44 +143,47 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
                     isTargetable={dragState.isDragging && dragState.needsTarget} 
                     isSelected={dragState.isHoveringTarget === enemy.id}
                     floatingTexts={getTextsFor(enemy.id)}
+                    onClick={(id) => {
+                        // Optional tap to target logic could go here if not dragging
+                    }}
                  />
              ))}
           </div>
 
           {/* Floating Texts Overlay (Legacy / General) */}
           <div className="absolute inset-0 pointer-events-none z-40">
-            {game.floatingTexts.filter((ft: any) => !ft.targetId).map((ft: any) => (<div key={ft.id} className={`absolute animate-damage ${ft.color} font-black text-stroke text-4xl`} style={{ left: `${ft.x}%`, top: `${ft.y}%` }}>{ft.text}</div>))}
+            {game.floatingTexts.filter((ft: any) => !ft.targetId).map((ft: any) => (<div key={ft.id} className={`absolute animate-damage ${ft.color} font-black text-stroke text-5xl`} style={{ left: `${ft.x}%`, top: `${ft.y}%` }}>{ft.text}</div>))}
           </div>
 
           {/* --- Layer: Bottom UI (Hand, Piles) --- */}
-          <div className="absolute bottom-0 left-0 w-full h-[220px] z-20 pointer-events-none">
+          <div className="absolute bottom-0 left-0 w-full h-[200px] z-20 pointer-events-none">
               
               {/* Piles */}
               <div className="absolute left-6 bottom-6 pointer-events-auto group hover:scale-105 transition-transform cursor-pointer">
                   <div className="w-20 h-28 bg-gradient-to-br from-amber-800 to-amber-900 rounded-xl border-4 border-amber-700 shadow-2xl flex items-center justify-center relative">
                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-50 rounded-lg"></div>
-                     <div className="z-10 text-amber-100 font-black text-2xl drop-shadow-md">{game.drawPile.length}</div>
+                     <div className="z-10 text-amber-100 font-black text-3xl drop-shadow-md">{game.drawPile.length}</div>
                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">牌堆</div>
                   </div>
               </div>
 
               <div className="absolute right-6 bottom-6 pointer-events-auto group hover:scale-105 transition-transform">
                    <div className="w-20 h-28 bg-slate-700 rounded-xl border-4 border-slate-600 flex items-center justify-center shadow-2xl relative">
-                     <div className="z-10 text-slate-200 font-black text-2xl drop-shadow-md">{game.discardPile.length}</div>
+                     <div className="z-10 text-slate-200 font-black text-3xl drop-shadow-md">{game.discardPile.length}</div>
                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">弃牌</div>
                   </div>
               </div>
 
               {/* End Turn Button */}
-              <div className="absolute bottom-32 right-8 pointer-events-auto z-30">
+              <div className="absolute bottom-32 right-6 pointer-events-auto z-30">
                   <button 
                     onClick={game.endTurn} 
                     onTouchEnd={(e) => { e.stopPropagation(); game.endTurn(); }}
                     disabled={game.phase !== 'PLAYER_TURN'} 
                     className={`
-                        px-6 py-3 rounded-xl font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.2)] transition-all duration-200 uppercase tracking-widest text-lg border-2 border-white/20
+                        px-6 py-3 rounded-xl font-black text-white shadow-[0_6px_0_rgba(0,0,0,0.2)] transition-all duration-200 uppercase tracking-widest text-lg border-2 border-white/20
                         ${game.phase === 'PLAYER_TURN' 
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:translate-y-1 hover:shadow-[0_2px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none' 
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:translate-y-1 hover:shadow-[0_3px_0_rgba(0,0,0,0.2)] active:translate-y-2 active:shadow-none' 
                             : 'bg-slate-500 grayscale cursor-not-allowed opacity-80 shadow-none translate-y-2'}
                     `}
                   >
@@ -190,19 +193,19 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
 
               {/* Hand Container */}
               <div className="absolute bottom-0 left-0 right-0 h-full flex items-end justify-center pointer-events-auto pb-4 perspective-1000">
-                   <div className="relative flex items-end h-52 w-[600px] justify-center">
+                   <div className="relative flex items-end h-52 w-[700px] justify-center">
                       {game.hand.map((card: any, index: number) => {
                           const total = game.hand.length;
                           const center = (total - 1) / 2;
                           const offset = index - center;
-                          const rotate = offset * 4; 
-                          const translateY = Math.abs(offset) * 4; 
+                          const rotate = offset * 3; 
+                          const translateY = Math.abs(offset) * 6; 
                           
                           const isBeingDragged = dragState.isDragging && dragState.itemId === card.id;
                           const isGroupMatch = dragState.isDragging && dragState.groupTag && card.groupTag === dragState.groupTag && card.id !== dragState.itemId;
                           
-                          // Fan spacing
-                          const xSpacing = Math.min(80, 600 / total);
+                          // Fan spacing (Slightly tighter for 720p)
+                          const xSpacing = Math.min(80, 700 / total);
 
                           return (
                             <div key={card.id} className="origin-bottom transition-all duration-300 absolute bottom-0 will-change-transform"
@@ -211,7 +214,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ game, dragState, startDragCard,
                                     marginLeft: `${offset * xSpacing}px`, // Center based positioning
                                     zIndex: isBeingDragged ? 100 : index,
                                     transform: isBeingDragged 
-                                        ? `translate(${offset * xSpacing}px, -200px) scale(1.1)` 
+                                        ? `translate(${offset * xSpacing}px, -200px) scale(0.01)` // Visually hide original while dragging
                                         : `translate(-50%, ${translateY}px) rotate(${rotate}deg)`,
                                     opacity: isBeingDragged ? 0 : 1 
                                 }}

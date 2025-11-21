@@ -51,7 +51,7 @@ export const useGame = () => {
       setTimeout(() => {
           setShakingTargets(prev => prev.filter(id => id !== targetId));
           setFlashTargets(prev => prev.filter(id => id !== targetId));
-      }, 500);
+      }, 500); // Match animation duration roughly
   };
 
   // --- Combat Logic ---
@@ -112,21 +112,35 @@ export const useGame = () => {
     }
 
     // VFX Trigger
-    if (targets.length > 0 && sourceCoords) {
-         targets.forEach(t => {
-             const targetEl = document.querySelector(`[data-enemy-id="${t.id}"]`);
-             if (targetEl) {
-                 const rect = targetEl.getBoundingClientRect();
-                 // Adjust for 720p canvas scaling if needed, but rects are screen coords
-                 // Actually useDragController handles scaling, here we just need visual start/end
-                 // Use a simpler "Slash" at target location
-                 if (effect.type === EffectType.DAMAGE) {
-                     triggerVFX('SLASH', rect.left + rect.width/2, rect.top + rect.height/2, undefined, undefined, theme);
-                 } else if (effect.type === EffectType.APPLY_STATUS) {
-                     triggerVFX('PROJECTILE', sourceCoords.x, sourceCoords.y, rect.left + rect.width/2, rect.top + rect.height/2, theme);
+    if (sourceCoords) {
+         if (effect.target === TargetType.SELF) {
+              if (effect.type === EffectType.BLOCK || effect.type === EffectType.HEAL) {
+                   triggerVFX('BUFF', 200, 400); // Approx player pos
+              }
+         } else if (targets.length > 0) {
+             targets.forEach(t => {
+                 const targetEl = document.querySelector(`[data-enemy-id="${t.id}"]`);
+                 if (targetEl) {
+                     const rect = targetEl.getBoundingClientRect();
+                     // Calculate roughly center of enemy based on DOM
+                     const centerX = rect.left + rect.width / 2;
+                     const centerY = rect.top + rect.height / 2;
+                     
+                     // We use the game logic coordinates, but since we don't have exact mapping in hook,
+                     // we pass the type and let the VFX layer handle absolute position from drag or just spawn on target.
+                     // For now, we just trigger effects.
+                     if (effect.type === EffectType.DAMAGE) {
+                         // Pass undefined coords to let the VFXLayer/EnemyComponent maybe handle it? 
+                         // Or better, calculate screen relative if possible. 
+                         // Simpler: just assume we want VFX at target.
+                         // Since we can't easily get coords here without ref, we rely on visual feedback in components or pass generic coords.
+                         // But wait, triggerVFX expects game coordinates.
+                         // We'll assume the caller provided startX/startY is good for "source", and we might not know exact target destination in logic.
+                         // Let's just spawn a slash at the source for now, or if we had target coords.
+                     }
                  }
-             }
-         });
+             });
+         }
     }
 
     switch (effect.type) {
@@ -152,21 +166,16 @@ export const useGame = () => {
                         setEnemies(prev => prev.map(e => e.id === enemy.id ? { ...e, currentHp: Math.max(0, e.currentHp - finalDmg) } : e));
                         triggerShake(enemy.id);
                         addFloatingText(`-${finalDmg}`, enemy.id, undefined, undefined, 'text-red-500 font-black', 'large');
-                        // Impact VFX on target
-                        const targetEl = document.querySelector(`[data-enemy-id="${enemy.id}"]`);
-                        if(targetEl) {
-                            const rect = targetEl.getBoundingClientRect();
-                             triggerVFX('IMPACT', rect.left + rect.width/2, rect.top + rect.height/2);
-                        }
+                    } else {
+                        triggerShake(enemy.id); // Still shake on block
                     }
                 });
-            }, 200); // Fast reaction
+            }, 100); // Quicker reaction
             break;
         }
         case EffectType.BLOCK:
             setPlayer(p => ({ ...p, block: p.block + effect.value }));
             addFloatingText(`+${effect.value} 🛡️`, 'PLAYER', undefined, undefined, 'text-blue-400', 'medium');
-            triggerVFX('BUFF', window.innerWidth * 0.15, window.innerHeight * 0.6); // Rough player pos
             break;
         case EffectType.HEAL:
             setPlayer(p => ({ ...p, currentHp: Math.min(p.maxHp, p.currentHp + effect.value) }));
@@ -323,7 +332,15 @@ export const useGame = () => {
           consumeDouble = true;
       }
 
+      // Trigger Effect
       card.effects.forEach(eff => resolveEffect(eff, targetId, {x: mouseX || 0, y: mouseY || 0}, card.theme));
+      
+      // Visual Feedback for Card Play
+      if (card.type === CardType.ATTACK) {
+          triggerVFX('SLASH', mouseX || 640, mouseY || 360, undefined, undefined, card.theme);
+      } else if (card.type === CardType.SKILL) {
+          triggerVFX('BUFF', mouseX || 640, mouseY || 360, undefined, undefined, CardTheme.HOLY);
+      }
 
       if (consumeDouble) {
            setPlayer(p => ({...p, statuses: p.statuses.filter(s => s.type !== StatusType.DOUBLE_NEXT_ATTACK)}));
@@ -344,7 +361,8 @@ export const useGame = () => {
       cards.forEach((card, index) => {
           setTimeout(() => {
               card.effects.forEach(eff => resolveEffect(eff, targetId, {x: startX || 0, y: startY || 0}, card.theme));
-          }, index * 200);
+              if(card.type === CardType.ATTACK) triggerVFX('SLASH', startX || 640, startY || 360, undefined, undefined, card.theme);
+          }, index * 150);
       });
   };
 
@@ -361,6 +379,7 @@ export const useGame = () => {
            });
 
            skill.effects?.forEach(eff => resolveEffect(eff, targetId, {x: mouseX || 0, y: mouseY || 0}, CardTheme.HOLY));
+           triggerVFX('EXPLOSION', mouseX || 640, mouseY || 360, undefined, undefined, CardTheme.HOLY);
       }
   };
 
@@ -431,10 +450,13 @@ export const useGame = () => {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
                         addFloatingText(`-${take}`, 'PLAYER', undefined, undefined, 'text-red-600 font-black', 'large');
-                        triggerVFX('SLASH', window.innerWidth * 0.15, window.innerHeight * 0.6, undefined, undefined, CardTheme.DARK);
+                        triggerVFX('SLASH', 200, 400, undefined, undefined, CardTheme.DARK); // Player approx
+                    } else {
+                        addFloatingText("格挡", 'PLAYER', undefined, undefined, 'text-gray-400', 'small');
                     }
                 } else if (enemy.intent === IntentType.BUFF) {
                     setEnemies(prev => prev.map(e => e.id === enemy.id ? {...e, block: e.block + 10} : e));
+                    addFloatingText("+10 🛡️", enemy.id, undefined, undefined, 'text-blue-400', 'medium');
                 } else if (enemy.intent === IntentType.SUMMON) {
                     if (enemies.filter(e => e.currentHp > 0).length < 4) {
                          const minionTemplates = PRESET_ENEMIES.filter(e => !e.isBoss);
@@ -468,7 +490,7 @@ export const useGame = () => {
                         setPlayer(p => ({...p, currentHp: p.currentHp - take}));
                         triggerShake('PLAYER');
                         addFloatingText(`💥 ${take}`, 'PLAYER', undefined, undefined, 'text-red-800 font-black', 'large');
-                        triggerVFX('EXPLOSION', window.innerWidth * 0.15, window.innerHeight * 0.6, undefined, undefined, CardTheme.FIRE);
+                        triggerVFX('EXPLOSION', 200, 400, undefined, undefined, CardTheme.FIRE); // Player Approx
                     }
                 }
 

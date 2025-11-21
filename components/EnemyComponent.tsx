@@ -5,7 +5,7 @@ import { Enemy, IntentType, Status, StatusType, FloatingText } from '../types';
 interface EnemyProps {
   enemy: Enemy;
   isShake: boolean;
-  isFlash: boolean; // New: White flash on hit
+  isFlash: boolean; // Strobe white flash
   isSelected?: boolean; 
   isTargetable?: boolean;
   floatingTexts?: FloatingText[]; // New: Texts specific to this enemy
@@ -61,18 +61,18 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelec
         className={`
             relative flex flex-col items-center transition-all duration-500 ease-in-out select-none
             ${(isTargetable && !isDead) ? 'cursor-pointer' : ''}
-            ${isSelected ? 'scale-110 z-20' : ''}
+            ${isSelected ? 'z-30 scale-110' : ''}
             ${isDead ? 'pointer-events-none' : ''}
             ${isCollapsed ? 'w-0 -ml-4 md:-ml-8 opacity-0' : 'w-24 md:w-32 opacity-100'}
         `}
         onClick={() => isTargetable && !isDead && onClick && onClick(enemy.id)}
     >
-      {/* Floating Texts Layer - Anchored to top of enemy */}
+      {/* Floating Texts Layer - Anchored to top of enemy, using relative pos */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 overflow-visible z-50 pointer-events-none">
           {floatingTexts.map(ft => (
               <div key={ft.id} 
-                   className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black flex justify-center w-40 -ml-20 text-center
-                   ${ft.size === 'large' ? 'text-5xl z-50' : 'text-3xl z-40'}`}
+                   className={`absolute whitespace-nowrap animate-damage ${ft.color} text-stroke font-black flex justify-center w-60 -ml-30 text-center
+                   ${ft.size === 'large' ? 'text-6xl z-50' : 'text-4xl z-40'}`}
               >
                   {ft.text}
               </div>
@@ -87,16 +87,16 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelec
         
           {/* Target Selection Highlight */}
           {(isTargetable && !isDead && isSelected) && (
-              <div className="absolute -inset-6 bg-gradient-to-t from-red-500/20 to-transparent rounded-[40%] animate-pulse pointer-events-none border-b-4 border-red-500 z-0 scale-125"></div>
+              <div className="absolute -inset-8 bg-gradient-to-t from-red-500/40 to-transparent rounded-[40%] animate-pulse pointer-events-none border-b-4 border-red-500 z-0 scale-125 shadow-[0_0_30px_rgba(239,68,68,0.6)]"></div>
           )}
           
           {/* Target Hint Ring */}
           {(isTargetable && !isDead && !isSelected) && (
-               <div className="absolute -inset-2 border-2 border-red-400/30 border-dashed rounded-full animate-spin-slow pointer-events-none opacity-50"></div>
+               <div className="absolute -inset-2 border-4 border-red-400/50 border-dashed rounded-full animate-spin-slow pointer-events-none opacity-70"></div>
           )}
 
           {/* Intent Bubble */}
-          <div className="mb-2 md:mb-3 bg-white/90 backdrop-blur-sm border-2 border-slate-100 px-2 py-1 md:px-3 md:py-1.5 rounded-2xl shadow-lg flex items-center gap-2 animate-float z-20 min-w-[50px] md:min-w-[60px] justify-center pointer-events-none transform hover:scale-125 transition-transform">
+          <div className="mb-2 md:mb-3 bg-white/90 backdrop-blur-sm border-2 border-slate-100 px-2 py-1 md:px-3 md:py-1.5 rounded-2xl shadow-lg flex items-center gap-2 animate-float z-20 min-w-[50px] md:min-w-[60px] justify-center pointer-events-none transform transition-transform">
             <span className={`text-lg md:text-xl leading-none ${getIntentColor()}`}>{getIntentIcon()}</span>
             {enemy.intentValue > 0 && (
                 <span className={`font-black text-base md:text-lg leading-none ${getIntentColor()}`}>{enemy.intentValue}</span>
@@ -119,7 +119,6 @@ const EnemyComponent: React.FC<EnemyProps> = ({ enemy, isShake, isFlash, isSelec
                 ${isShake ? 'animate-shake' : 'animate-float'}
                 ${isFlash ? 'animate-hit-flash' : ''}
                 ${enemy.isBoss ? 'text-[9rem] md:text-[11rem]' : ''} 
-                ${(isTargetable && !isDead && isSelected) ? 'scale-110' : ''}
               `}>
                 {enemy.emoji}
               </div>

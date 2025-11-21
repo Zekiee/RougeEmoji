@@ -63,25 +63,27 @@
         90% { transform: translateX(-2px); }
       }
       
-      /* Updated Hit Flash: Strobe Effect with Opacity */
+      /* Updated Hit Flash: Strobe/Flicker Effect with Opacity */
+      /* 0.2s duration: Disappear, Appear, Disappear, Appear */
       @keyframes hit-flash {
         0% { opacity: 1; filter: brightness(1); }
-        25% { opacity: 0.2; filter: brightness(5); }
-        50% { opacity: 1; filter: brightness(1); }
-        75% { opacity: 0.2; filter: brightness(5); }
+        10% { opacity: 0.2; filter: brightness(5) grayscale(1); }
+        30% { opacity: 1; filter: brightness(1); }
+        50% { opacity: 0.2; filter: brightness(5) grayscale(1); }
+        70% { opacity: 1; filter: brightness(1); }
         100% { opacity: 1; filter: brightness(1); }
       }
 
       @keyframes damage-float {
         0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-        15% { transform: translate(-50%, -30px) scale(1.5); opacity: 1; }
-        100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+        15% { transform: translate(-50%, -40px) scale(1.2); opacity: 1; }
+        100% { transform: translate(-50%, -100px) scale(1); opacity: 0; }
       }
       
       @keyframes slash-anim {
-        0% { stroke-dashoffset: 100; opacity: 0; }
-        10% { opacity: 1; }
-        100% { stroke-dashoffset: 0; opacity: 0; }
+        0% { stroke-dashoffset: 100; opacity: 0; transform: scale(0.8) rotate(-10deg); }
+        20% { opacity: 1; }
+        100% { stroke-dashoffset: 0; opacity: 0; transform: scale(1.2) rotate(10deg); }
       }
 
       @keyframes dash {
@@ -109,7 +111,7 @@
         100% { transform: translate(-50%, -100px) scale(1.5); opacity: 0; }
       }
 
-      /* Card Draw Animation - Moved from CardComponent */
+      /* Card Draw Animation */
       @keyframes draw-card-anim {
           0% { transform: translate(-50px, 100px) rotate(-20deg); opacity: 0; }
           100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
@@ -118,8 +120,8 @@
       .animate-float { animation: float 3s ease-in-out infinite; }
       .animate-float-slow { animation: float-slow 4s ease-in-out infinite; }
       .animate-pop { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-      .animate-shake { animation: shake 0.5s ease-in-out; }
-      .animate-hit-flash { animation: hit-flash 0.25s linear; }
+      .animate-shake { animation: shake 0.4s ease-in-out; }
+      .animate-hit-flash { animation: hit-flash 0.25s steps(1); }
       .animate-damage { animation: damage-float 1s ease-out forwards; }
       .animate-shadow { animation: shadow-breath 3s ease-in-out infinite; }
       .animate-death-pop { animation: death-pop 0.6s ease-in-out forwards; }
@@ -130,7 +132,7 @@
       }
       
       .animate-slash {
-          animation: slash-anim 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: slash-anim 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       }
 
       /* 隐藏卡牌历史记录的滚动条 */

@@ -70,13 +70,17 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
                 
                 // Hit detection logic inside move for highlighting
                 let hoveringTarget = undefined;
+                
+                // We need client coordinates for elementFromPoint
+                let clientX = 0, clientY = 0;
+                if('touches' in e && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX; clientY = e.touches[0].clientY;
+                } else if ('clientX' in e) {
+                    clientX = (e as MouseEvent).clientX; clientY = (e as MouseEvent).clientY;
+                }
+
                 if (ds.needsTarget) {
-                     let clientX = 0, clientY = 0;
-                    if('changedTouches' in e && e.changedTouches.length > 0) {
-                        clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY;
-                    } else if ('clientX' in e) {
-                        clientX = (e as MouseEvent).clientX; clientY = (e as MouseEvent).clientY;
-                    }
+                    // Find element under finger
                     const elements = document.elementsFromPoint(clientX, clientY);
                     const enemyElement = elements.find(el => el.hasAttribute('data-enemy-id'));
                     const targetId = enemyElement?.getAttribute('data-enemy-id');
@@ -90,7 +94,6 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
         const handleDrop = (e: MouseEvent | TouchEvent) => {
             const ds = dragStateRef.current;
             const currentGame = gameRef.current;
-            const { x, y } = getGameXY(e); 
             const { needsTarget, itemId, dragType, groupTag } = ds;
             
             let clientX = 0, clientY = 0;
@@ -104,8 +107,10 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
             const enemyElement = elements.find(el => el.hasAttribute('data-enemy-id'));
             const targetId = enemyElement?.getAttribute('data-enemy-id');
 
+            // Check Drop
             if (needsTarget) {
                 if (targetId && itemId) {
+                    // Valid drop on target
                     if (dragType === 'CARD') {
                         if (groupTag) {
                             const stack = currentGame.hand.filter((c: Card) => c.groupTag === groupTag || c.id === itemId);
@@ -119,9 +124,10 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
                     }
                 }
             } else {
-                // Drop zone logic
-                // In 720p, Y < 480 (approx 2/3 height) is safe for play area
-                if (y < 480 && itemId) {
+                // Drop zone logic (simple Y check)
+                // If released above the hand area (e.g. Y < 500)
+                const { y } = getGameXY(e);
+                if (y < 500 && itemId) {
                      if (dragType === 'CARD') {
                          const card = currentGame.hand.find((c: Card) => c.id === itemId);
                          if (card) currentGame.playCard(card, undefined, ds.startX, ds.startY);
@@ -160,7 +166,9 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
         
         const { x, y } = getGameXY(e);
         const needsTarget = card.effects.some(ef => ef.target === TargetType.SINGLE_ENEMY);
-        const offsetY = -60; // Reduced visual lift in Game Units (720p)
+        
+        // Initial offset slightly above finger to see card
+        const offsetY = -80; 
         
         updateDragState({
             isDragging: true, itemId: card.id,
@@ -177,7 +185,7 @@ export const useDragController = ({ game, scale, isPortrait }: UseDragController
 
         const { x, y } = getGameXY(e);
         const needsTarget = skill.effects?.some(ef => ef.target === TargetType.SINGLE_ENEMY) || false;
-        const offsetY = -60;
+        const offsetY = -80;
 
         updateDragState({
             isDragging: true, itemId: skill.id,

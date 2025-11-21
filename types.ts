@@ -1,4 +1,5 @@
 
+
 export enum CardType {
   ATTACK = 'ATTACK',
   SKILL = 'SKILL',
@@ -227,5 +228,5 @@ export interface DragState {
     groupTag?: string;
     theme?: CardTheme;
     sourceItem?: Card | Skill;
-    isHoveringTarget?: boolean; // New: UI feedback
+    isHoveringTarget?: string; // New: Target ID if hovering over one
 }
